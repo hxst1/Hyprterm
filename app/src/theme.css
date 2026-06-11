@@ -1,0 +1,255 @@
+/* Catppuccin Mocha — cambia estas variables para clavar tu paleta de Hyprland */
+:root {
+  --crust: #11111b;
+  --mantle: #181825;
+  --base: #1e1e2e;
+  --surface0: #313244;
+  --surface1: #45475a;
+  --overlay0: #6c7086;
+  --text: #cdd6f4;
+  --subtext: #a6adc8;
+  --blue: #89b4fa;
+  --lavender: #b4befe;
+  --mauve: #cba6f7;
+  --green: #a6e3a1;
+  --red: #f38ba8;
+  --yellow: #f9e2af;
+  --peach: #fab387;
+  --teal: #94e2d5;
+
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --waybar-h: 40px;
+  --keybar-h: 44px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--crust);
+  color: var(--text);
+  font-family: var(--font-mono);
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* ---------- contenedor raíz que respeta el teclado (visualViewport) ---------- */
+.shell {
+  position: fixed;
+  inset: 0;
+  height: var(--vvh, 100%);
+  display: flex;
+  flex-direction: column;
+  /* fondo tipo wallpaper de Hyprland: gradiente oscuro con un toque de color */
+  background:
+    radial-gradient(120% 90% at 80% -10%, #2a2a45 0%, transparent 60%),
+    radial-gradient(100% 80% at 10% 110%, #1b2a4a 0%, transparent 55%),
+    var(--crust);
+}
+
+/* ---------- waybar ---------- */
+.waybar {
+  margin: calc(env(safe-area-inset-top, 0px) + 6px) 10px 6px;
+  height: var(--waybar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--base) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--surface0);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.waybar .workspaces {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.waybar .workspaces::-webkit-scrollbar { display: none; }
+
+.ws-chip {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--subtext);
+  font-family: inherit;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.ws-chip.active {
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 55%, transparent);
+  color: var(--blue);
+}
+.ws-chip .close-x {
+  color: var(--red);
+  font-weight: 700;
+  padding: 2px;
+}
+.ws-chip.add { color: var(--green); font-weight: 700; }
+
+.waybar .modules {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--subtext);
+  white-space: nowrap;
+}
+.waybar .mod { display: flex; align-items: center; gap: 4px; }
+.waybar .mod b { color: var(--text); font-weight: 600; }
+.waybar .mod.cpu b { color: var(--peach); }
+.waybar .mod.mem b { color: var(--mauve); }
+.waybar .mod.bat b { color: var(--green); }
+.waybar .clock { color: var(--lavender); font-weight: 600; }
+
+/* ---------- pager de ventanas ---------- */
+.pager {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  min-height: 0;
+}
+.pager::-webkit-scrollbar { display: none; }
+
+.page {
+  flex: 0 0 100%;
+  width: 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  padding: 4px 10px 6px;
+  min-height: 0;
+  display: flex;
+}
+
+/* "ventana" tipo Hyprland: borde con gradiente como tu config */
+.term-window {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--blue), var(--mauve));
+}
+.term-window.inactive { background: var(--surface1); }
+.term-inner {
+  height: 100%;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--base) 96%, transparent);
+  padding: 8px 4px 8px 10px;
+  overflow: hidden;
+}
+.term-inner .xterm { height: 100%; }
+
+/* ---------- barra de teclas ---------- */
+.keybar {
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px calc(env(safe-area-inset-bottom, 0px) + 6px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: color-mix(in srgb, var(--mantle) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--surface0);
+}
+.keybar::-webkit-scrollbar { display: none; }
+
+.key {
+  flex-shrink: 0;
+  min-width: 40px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--surface1);
+  background: var(--surface0);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.key:active { background: var(--surface1); }
+.key.sticky-on {
+  background: color-mix(in srgb, var(--mauve) 25%, var(--surface0));
+  border-color: var(--mauve);
+  color: var(--mauve);
+}
+
+/* ---------- pantallas de estado (offline / login) ---------- */
+.statescreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+}
+.statescreen .glyph { font-size: 44px; }
+.statescreen h1 { font-size: 19px; margin: 0; font-weight: 600; }
+.statescreen p { color: var(--subtext); font-size: 13px; margin: 0; line-height: 1.5; }
+
+.fakeprompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--base);
+  border: 1px solid var(--surface1);
+}
+.fakeprompt.error { border-color: var(--red); animation: shake .3s; }
+.fakeprompt .ps1 { color: var(--green); font-weight: 700; }
+.fakeprompt input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px; /* evita el zoom automático de iOS */
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.btn {
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--surface0);
+  color: var(--blue);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.btn:active { background: var(--surface1); }
+
+.errmsg { color: var(--red); font-size: 13px; min-height: 18px; }
