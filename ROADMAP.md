@@ -161,25 +161,26 @@ de claves.
 Objetivo: alguien encuentra el repo, lo clona y en minutos lo tiene corriendo
 en sus dispositivos, sin conocer tmux ni systemd ni Tailscale a fondo.
 
-- [ ] **Instalador de un comando**: `pnpm run setup` (o script `install.sh`)
-      que pregunta lo mínimo (contraseña, puerto, nombre de sesión), instala
-      dependencias, hace el build, detecta el SO e instala el servicio
-      (systemd en Linux, launchd en macOS) y comprueba/guía tmux y Tailscale.
-- [ ] **Desacoplar lo personal**: nada hardcodeado del setup propio; todo en
-      `config.json` con valores por defecto sensatos y `config.example.json`.
-- [ ] **README en inglés** orientado a usuarios (el actual pasa a docs de
-      desarrollo o sección en español): qué es, capturas/GIF, quickstart de
-      3 pasos, requisitos claros (Node, tmux, Tailscale opcional pero
-      recomendado para iOS).
-- [ ] **Guía sin Tailscale**: documentar alternativas (LAN local con
-      certificado autofirmado no vale para PWA en iOS — explicar por qué y
-      qué opciones hay: Tailscale, propio dominio + reverse proxy…).
-- [ ] **Revisión de seguridad antes de publicitar el repo**: repasar el server
-      con ojos de atacante (es software que expone shells remotos): superficie
-      de la API y del WS, manejo de tokens y tickets, inyección vía argumentos
-      de tmux, dependencias, y qué pasa si alguien lo expone a internet sin
-      Tailscale por error (¿warning en el arranque?).
-- [ ] Licencia (MIT probablemente), CONTRIBUTING básico y plantilla de issues.
+- [x] **Instalador de un comando** *(2026-06-12: `setup.sh` / `pnpm setup` —
+      pregunta puerto/sesión/loopback/contraseña, escribe config, instala deps,
+      build, detecta SO e instala el servicio (systemd/launchd). Verificado de
+      punta a punta; cazó un bug —`enable --now` no reinicia un servicio ya
+      activo, así que no releía la config— corregido a `restart`)*.
+- [x] **Desacoplar lo personal** *(2026-06-12: `config.example.json` documentado,
+      `setpass` preserva campos existentes, tailnet de los tests genérico,
+      `.claude/settings.local.json` en gitignore)*.
+- [x] **README en inglés** *(2026-06-12: `README.md` en inglés orientado a
+      usuarios con screenshot real, quickstart con el instalador, requisitos;
+      `README.es.md` en español; detalles de dev en CONTRIBUTING)*.
+- [x] **Guía sin Tailscale** *(2026-06-12: sección explicando por qué el
+      autofirmado no vale en iOS y las alternativas —dominio propio + reverse
+      proxy, Cloudflare Tunnel, navegadores de escritorio por http directo)*.
+- [x] **Revisión de seguridad** *(2026-06-12: bind a loopback por defecto + aviso
+      al exponer, saneado de nombres de ventana (evita inyección de líneas en
+      list-windows vía `\n`), validación de id en DELETE, clamp de dimensiones.
+      Auth ya era sólida (scrypt, tokens HMAC timing-safe, tickets de un solo
+      uso). `server/src/validate.js` + tests)*.
+- [x] Licencia MIT, CONTRIBUTING y plantillas de issues *(2026-06-12)*.
 - [ ] Releases con tags y changelog; quizá publicar en AUR más adelante.
 
 ## Hecho fuera de fase
