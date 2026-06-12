@@ -5,7 +5,7 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { termWsUrl } from '../api.js'
-import { xtermTheme, fontSize, subscribe, terminalTransparent } from '../prefs.js'
+import { xtermTheme, fontSize, subscribe } from '../prefs.js'
 
 const FONT_FAMILY = "'JetBrainsMono Nerd Font Mono', monospace"
 
@@ -30,7 +30,6 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
   const holderRef = useRef(null)
 
   useEffect(() => {
-    const transparent = terminalTransparent()
     const term = new Terminal({
       theme: xtermTheme(),
       // arranca con la fuente del sistema; al cargar la Nerd Font se cambia y re-mide
@@ -39,7 +38,7 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
       cursorBlink: true,
       scrollback: 5000,
       allowProposedApi: true, // lo exige addon-unicode11
-      allowTransparency: transparent // deja ver el wallpaper a través del texto
+      allowTransparency: true // deja ver el panel translúcido / wallpaper a través del texto
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
@@ -49,10 +48,10 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
     // URLs tappables (target _blank)
     term.loadAddon(new WebLinksAddon((_e, uri) => window.open(uri, '_blank')))
     term.open(holderRef.current)
-    // renderer WebGL si la GPU lo permite; pero NO con fondo translúcido (WebGL
-    // no pinta transparencias) ni si se fuerza ?nowebgl
+    // renderer WebGL si la GPU lo permite (desde addon-webgl 0.16 ya pinta
+    // transparencias); ?nowebgl lo fuerza al renderer DOM
     let webgl = null
-    if (!transparent && !location.search.includes('nowebgl')) {
+    if (!location.search.includes('nowebgl')) {
       try {
         webgl = new WebglAddon()
         webgl.onContextLoss(() => webgl.dispose())

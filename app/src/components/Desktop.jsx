@@ -4,7 +4,7 @@ import Waybar from './Waybar.jsx'
 import TermView from './TermView.jsx'
 import KeyBar from './KeyBar.jsx'
 import SettingsSheet from './SettingsSheet.jsx'
-import { loadHostThemes, applyWallpaper, subscribe as subscribePrefs, terminalTransparent } from '../prefs.js'
+import { loadHostThemes, applyWallpaper } from '../prefs.js'
 
 export default function Desktop({ onAuthLost }) {
   const [windows, setWindows] = useState([])
@@ -12,10 +12,6 @@ export default function Desktop({ onAuthLost }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [mods, setMods] = useState({ ctrl: false, alt: false, shift: false })
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // la transparencia es de construcción del terminal: si cambia, hay que
-  // remontar las TermView (cambiando su key) para recrear el renderer
-  const [transparent, setTransparent] = useState(terminalTransparent())
-  useEffect(() => subscribePrefs(() => setTransparent(terminalTransparent())), [])
 
   const pagerRef = useRef(null)
   const termsRef = useRef(new Map())
@@ -206,7 +202,7 @@ export default function Desktop({ onAuthLost }) {
             <div className={`term-window ${i === activeIdx ? '' : 'inactive'}`}>
               <div className="term-inner">
                 <TermView
-                  key={`${w.id}:${transparent}`}
+                  key={w.id}
                   win={w}
                   registerTerm={registerTerm}
                   modsRef={modsRef}

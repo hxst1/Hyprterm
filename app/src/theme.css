@@ -193,7 +193,10 @@ body {
 .term-inner {
   height: 100%;
   border-radius: 10px;
+  /* translúcido estilo kitty + blur tipo Hyprland (igual que waybar/keybar) */
   background: var(--term-panel, var(--term-bg));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 8px 4px 8px 10px;
   overflow: hidden;
 }

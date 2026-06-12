@@ -73,18 +73,11 @@ export function setTheme(idOrJson) {
   emit()
 }
 
-// ¿se necesita terminal translúcida? sí cuando hay wallpaper, para que se vea
-// el fondo a través del texto.
-export function terminalTransparent() {
-  return wallpaperMode() !== 'none'
-}
-
+// El lienzo de xterm es siempre transparente: el fondo real lo pinta el panel
+// (--term-panel), translúcido estilo kitty con background_opacity.
 export function xtermTheme() {
   const t = currentTheme()
-  const background = terminalTransparent()
-    ? 'rgba(0,0,0,0)' // transparente: el panel deja ver el wallpaper
-    : (t.terminal.background ?? t.ui.bg2)
-  return { ...t.terminal, background }
+  return { ...t.terminal, background: 'rgba(0,0,0,0)' }
 }
 
 // Vuelca la paleta ui a variables CSS (theme.css las consume)
@@ -146,18 +139,17 @@ let lastObjectUrl = null   // para revocar el object URL anterior y no fugar mem
 // Pinta el fondo del body desde la imagen resuelta + el oscurecido del tema.
 function paintBackground() {
   const root = document.documentElement.style
-  const transparent = terminalTransparent()
+  // panel del terminal: siempre un poco translúcido (como kitty); más abierto
+  // sobre wallpaper para que se aprecie la imagen
   if (resolvedBgUrl) {
     root.setProperty('--bg-image', `url("${resolvedBgUrl}")`)
     root.setProperty('--bg-dim', dimRgba(currentTheme().ui.bg0, wallpaperDim()))
+    root.setProperty('--term-panel', 'color-mix(in srgb, var(--term-bg) 58%, transparent)')
   } else {
     root.setProperty('--bg-image', 'none')
     root.setProperty('--bg-dim', 'transparent')
+    root.setProperty('--term-panel', 'color-mix(in srgb, var(--term-bg) 85%, transparent)')
   }
-  // panel del terminal: opaco normalmente, semitransparente sobre wallpaper
-  root.setProperty('--term-panel', transparent
-    ? 'color-mix(in srgb, var(--term-bg) 58%, transparent)'
-    : 'var(--term-bg)')
 }
 
 // Resuelve la imagen según el modo (host = fetch autenticado) y la pinta.
