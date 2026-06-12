@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@xterm/xterm/css/xterm.css'
 import './theme.css'
 import App from './App.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { applyTheme } from './prefs.js'
 
 applyTheme()
@@ -27,4 +28,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('/sw.js').catch(() => {})
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+createRoot(document.getElementById('root')).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+)

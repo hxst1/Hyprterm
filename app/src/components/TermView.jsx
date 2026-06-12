@@ -48,8 +48,9 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
     term.loadAddon(new WebLinksAddon((_e, uri) => window.open(uri, '_blank')))
     term.open(holderRef.current)
     // renderer WebGL si la GPU lo permite; si no, se queda el DOM renderer
+    let webgl = null
     try {
-      const webgl = new WebglAddon()
+      webgl = new WebglAddon()
       webgl.onContextLoss(() => webgl.dispose())
       term.loadAddon(webgl)
     } catch { /* sin WebGL */ }
@@ -176,6 +177,9 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
       ro.disconnect()
       registerTerm(win.id, null)
       ws?.close()
+      // el WebGL debe soltarse antes que el Terminal: si lo destruye term.dispose()
+      // su renderer ya no existe y lanza (_isDisposed), tumbando el árbol React
+      try { webgl?.dispose() } catch { /* ya dispuesto */ }
       term.dispose()
     }
     // la identidad de la ventana es win.id; el resto de props son refs estables

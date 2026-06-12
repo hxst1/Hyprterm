@@ -33,6 +33,20 @@ Ordenado por fases: cada una deja el proyecto en un estado estable y desplegable
       `visualViewport.offsetTop` (eventos `resize` y `scroll`) y aplicarlo
       como `top` de `.shell`. Pendiente de confirmar en el iPhone.
 
+- [x] **Pantalla negra al cerrar la 2ª terminal** *(resuelto 2026-06-12)*: al
+      desmontar una TermView, `term.dispose()` destruía el WebglAddon cuyo
+      renderer ya no existía → `TypeError: ..._isDisposed`. Sin error boundary,
+      el throw tumbaba todo el árbol React y la pantalla quedaba en negro. Fix:
+      soltar el WebGL explícitamente (try/catch) ANTES de `term.dispose()`, y
+      añadir un `ErrorBoundary` global como red de seguridad (recargar sin
+      perder la sesión de tmux). Verificado: 3 ciclos abrir/cerrar sin caída.
+- [x] **Safe area del teclado con otro color en el login** *(resuelto
+      2026-06-12)*: el gradiente "wallpaper" vivía en `.shell`, que sigue al
+      visualViewport y se encoge con el teclado, dejando ver el `body` (color
+      plano) en el safe area. Fix: mover el gradiente al `body`
+      (`background-attachment: fixed`, cubre toda la pantalla y los safe areas)
+      y dejar `.shell` transparente. Pendiente de confirmar en el iPhone.
+
 ## Fase 1 — Robustez del server
 
 - [x] **Migrar a Express 5** *(hecho 2026-06-12: express@5.2.1 + middleware de

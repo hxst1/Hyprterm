@@ -46,11 +46,21 @@ html, body, #root {
   padding: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg0);
   color: var(--text);
   font-family: var(--font-mono);
   overscroll-behavior: none;
   touch-action: manipulation;
+}
+
+/* Wallpaper a pantalla completa en el body (no en .shell): así cubre también
+   los safe areas y la zona que deja el teclado de iOS al encoger el viewport,
+   sin que se vea un color distinto detrás. */
+body {
+  background:
+    radial-gradient(120% 90% at 80% -10%, var(--wall-a) 0%, transparent 60%),
+    radial-gradient(100% 80% at 10% 110%, var(--wall-b) 0%, transparent 55%),
+    var(--bg0);
+  background-attachment: fixed;
 }
 
 /* ---------- contenedor raíz que respeta el teclado (visualViewport) ---------- */
@@ -62,11 +72,7 @@ html, body, #root {
   height: var(--vvh, 100%);
   display: flex;
   flex-direction: column;
-  /* fondo tipo wallpaper de Hyprland: gradiente oscuro con un toque de color */
-  background:
-    radial-gradient(120% 90% at 80% -10%, var(--wall-a) 0%, transparent 60%),
-    radial-gradient(100% 80% at 10% 110%, var(--wall-b) 0%, transparent 55%),
-    var(--bg0);
+  background: transparent;
 }
 
 /* ---------- waybar ---------- */
