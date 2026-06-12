@@ -17,6 +17,22 @@ Ordenado por fases: cada una deja el proyecto en un estado estable y desplegable
       hace `copy-mode -e` (y los binds son globales al server de tmux, así
       que mejor no tocarlos).
 
+- [x] **Expulsión al login tras un deploy** *(resuelto 2026-06-12)*: las PWAs
+      de iOS viven días en memoria; tras desplegar el cambio de tickets, el
+      bundle viejo seguía abriendo el WS con `?token=`, el server lo cerraba
+      con 4001 y el código viejo trataba 4001 como sesión caducada → login en
+      bucle. Fix: build id inyectado por Vite (`__BUILD_ID__` +
+      `dist/build-id.json`), expuesto en `/api/health`; el cliente se recarga
+      una sola vez (guardia en sessionStorage) al detectar build nuevo, al
+      arrancar y al volver del background.
+- [x] **Input del login invisible con el teclado de iOS** *(resuelto
+      2026-06-12)*: iOS no redimensiona el layout viewport al abrir el
+      teclado: encoge el visualViewport y además lo desplaza (`offsetTop`).
+      `.shell` (fixed, anclado al layout) solo compensaba la altura, así que
+      la UI subía hasta la isla. Fix: sincronizar también `--vvt` =
+      `visualViewport.offsetTop` (eventos `resize` y `scroll`) y aplicarlo
+      como `top` de `.shell`. Pendiente de confirmar en el iPhone.
+
 ## Fase 1 — Robustez del server
 
 - [x] **Migrar a Express 5** *(hecho 2026-06-12: express@5.2.1 + middleware de

@@ -6,7 +6,7 @@ import os from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 
 import { loadConfig } from './config.js'
@@ -20,8 +20,17 @@ app.use(express.json())
 
 // --- API pública (solo "¿estás vivo?") ---
 app.get('/api/health', (_req, res) => {
-  res.json({ online: true, host: os.hostname() })
+  res.json({ online: true, host: os.hostname(), build: readBuildId() })
 })
+
+// build actual de la PWA servida — el cliente se recarga si no coincide con el suyo
+function readBuildId() {
+  try {
+    return JSON.parse(readFileSync(join(dist, 'build-id.json'), 'utf8')).build
+  } catch {
+    return null
+  }
+}
 
 app.post('/api/login', (req, res) => {
   const ip = req.socket.remoteAddress ?? '?'

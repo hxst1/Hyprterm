@@ -4,6 +4,17 @@ import Offline from './components/Offline.jsx'
 import Login from './components/Login.jsx'
 import Desktop from './components/Desktop.jsx'
 
+// Si el server sirve un build más nuevo que este bundle, recarga (una sola vez
+// por build): una PWA de iOS puede vivir días en memoria y quedarse hablando
+// un protocolo viejo tras un deploy.
+function reloadIfNewBuild(build) {
+  if (import.meta.env.DEV || !build || build === __BUILD_ID__) return false
+  if (sessionStorage.getItem('hyprterm_reloaded_for') === build) return false
+  sessionStorage.setItem('hyprterm_reloaded_for', build)
+  location.reload()
+  return true
+}
+
 // checking → offline | login | desktop
 export default function App() {
   const [state, setState] = useState('checking')
@@ -11,7 +22,8 @@ export default function App() {
   const check = useCallback(async () => {
     setState('checking')
     try {
-      await api('/api/health', { timeoutMs: 4000 })
+      const health = await api('/api/health', { timeoutMs: 4000 })
+      if (reloadIfNewBuild(health?.build)) return
     } catch {
       setState('offline')
       return
@@ -30,6 +42,19 @@ export default function App() {
   }, [])
 
   useEffect(() => { check() }, [check])
+
+  // al volver del background, comprueba si hay un build nuevo desplegado
+  useEffect(() => {
+    async function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const health = await api('/api/health', { timeoutMs: 3000 })
+        reloadIfNewBuild(health?.build)
+      } catch { /* sin red ahora mismo: ya reintentará */ }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   const logout = useCallback(() => {
     clearToken()
