@@ -102,8 +102,21 @@ login. The installed PWA stays on one origin and talks to the others via CORS.
 
 `server/config.json` (created by `setpass`, gitignored). See
 `server/config.example.json` for all fields: `port`, `bind`, tmux `session`,
-`shell`, `startDir` (where new windows open), and `tokenTtlMs`. Custom themes go in
+`shell`, `startDir` (where new windows open), `wallpaper` (a background image
+served to the app) and `tokenTtlMs`. Custom themes go in
 `~/.config/hyprterm/themes/*.json`.
+
+**Leaner shell on mobile**: hyprterm's tmux panes are created with `HYPRTERM=1`
+in the environment, so your shell can adapt — e.g. a shorter prompt on the phone.
+With Powerlevel10k you can branch in `~/.zshrc`:
+
+```zsh
+if [[ -n $HYPRTERM ]]; then
+  source ~/.config/hyprterm/p10k-mobile.zsh   # minimal: path + git, left only
+else
+  [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+fi
+```
 
 ## Development & contributing
 

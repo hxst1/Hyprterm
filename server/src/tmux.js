@@ -8,11 +8,13 @@ async function tmux(...args) {
   return stdout.trimEnd()
 }
 
+// HYPRTERM=1 marca las panes creadas por hyprterm para que el shell pueda
+// adaptarse (p. ej. un prompt más corto en el móvil). Requiere tmux 3.2+ (-e).
 export async function ensureSession(session, shell, startDir) {
   try {
     await tmux('has-session', '-t', `=${session}`)
   } catch {
-    const args = ['new-session', '-d', '-s', session]
+    const args = ['new-session', '-d', '-s', session, '-e', 'HYPRTERM=1']
     if (startDir) args.push('-c', startDir)
     if (shell) args.push(shell)
     await tmux(...args)
@@ -33,7 +35,7 @@ export async function listWindows(session) {
 }
 
 export async function newWindow(session, name, shell, startDir) {
-  const args = ['new-window', '-t', `=${session}`, '-P', '-F', '#{window_id}']
+  const args = ['new-window', '-t', `=${session}`, '-e', 'HYPRTERM=1', '-P', '-F', '#{window_id}']
   if (name) args.splice(1, 0, '-n', name)
   if (startDir) args.push('-c', startDir)
   if (shell) args.push(shell)

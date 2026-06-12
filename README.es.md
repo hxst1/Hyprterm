@@ -102,8 +102,21 @@ La PWA instalada se queda en un origen y habla con los demás por CORS.
 
 `server/config.json` (lo crea `setpass`, en .gitignore). Ver
 `server/config.example.json` para todos los campos: `port`, `bind`, `session` de
-tmux, `shell`, `startDir` (dónde nacen las ventanas) y `tokenTtlMs`. Los temas
-propios van en `~/.config/hyprterm/themes/*.json`.
+tmux, `shell`, `startDir` (dónde nacen las ventanas), `wallpaper` (imagen de
+fondo servida a la app) y `tokenTtlMs`. Los temas propios van en
+`~/.config/hyprterm/themes/*.json`.
+
+**Shell más limpia en el móvil**: las panes de tmux de hyprterm se crean con
+`HYPRTERM=1` en el entorno, así tu shell puede adaptarse — p. ej. un prompt más
+corto en el móvil. Con Powerlevel10k puedes ramificar en `~/.zshrc`:
+
+```zsh
+if [[ -n $HYPRTERM ]]; then
+  source ~/.config/hyprterm/p10k-mobile.zsh   # minimal: ruta + git, solo izquierda
+else
+  [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+fi
+```
 
 ## Desarrollo
 
