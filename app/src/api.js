@@ -57,6 +57,23 @@ export async function pingHost(host, timeoutMs = 3500) {
   }
 }
 
+// Descarga el wallpaper del host activo (autenticado) como object URL, o null.
+export async function wallpaperObjectUrl() {
+  try {
+    const headers = {}
+    const token = getToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch(hostBase() + '/api/wallpaper', {
+      headers,
+      signal: AbortSignal.timeout(8000)
+    })
+    if (!res.ok) return null
+    return URL.createObjectURL(await res.blob())
+  } catch {
+    return null
+  }
+}
+
 // Renueva el token del host activo cuando le queda <25 % de vida.
 // Single-flight: nunca dos renovaciones a la vez.
 let refreshing = null

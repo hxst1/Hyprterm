@@ -22,6 +22,9 @@ export function loadConfig() {
     shell: cfg.shell ?? null,
     // dónde nacen las ventanas; por defecto el home, no el cwd del servicio
     startDir: cfg.startDir ?? homedir(),
+    // ruta a una imagen de fondo opcional (p. ej. tu wallpaper de Hyprland);
+    // la sirve GET /api/wallpaper y la PWA puede usarla de fondo
+    wallpaper: cfg.wallpaper ?? null,
     passwordHash: cfg.passwordHash,
     salt: cfg.salt,
     secret: cfg.secret,

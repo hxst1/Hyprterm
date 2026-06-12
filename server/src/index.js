@@ -34,7 +34,12 @@ app.use((req, res, next) => {
 
 // --- API pública (solo "¿estás vivo?") ---
 app.get('/api/health', (_req, res) => {
-  res.json({ online: true, host: os.hostname(), build: readBuildId() })
+  res.json({
+    online: true,
+    host: os.hostname(),
+    build: readBuildId(),
+    wallpaper: Boolean(cfg.wallpaper) // ¿hay imagen de fondo configurada?
+  })
 })
 
 // build actual de la PWA servida — el cliente se recarga si no coincide con el suyo
@@ -158,6 +163,25 @@ app.get('/api/themes', requireAuth, async (_req, res) => {
 
 app.get('/api/stats', requireAuth, async (_req, res) => {
   res.json(await getStats())
+})
+
+// Imagen de fondo configurada (cfg.wallpaper). Autenticada: el cliente la pide
+// con el token y la usa como blob, así no se sirve a cualquiera sin login.
+const WALLPAPER_TYPES = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+  '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif'
+}
+app.get('/api/wallpaper', requireAuth, (_req, res) => {
+  if (!cfg.wallpaper || !existsSync(cfg.wallpaper)) {
+    res.status(404).json({ error: 'no_wallpaper' })
+    return
+  }
+  const ext = cfg.wallpaper.slice(cfg.wallpaper.lastIndexOf('.')).toLowerCase()
+  res.type(WALLPAPER_TYPES[ext] ?? 'application/octet-stream')
+  // dotfiles:'allow' porque la ruta suele estar bajo ~/.config (Express los veta por defecto)
+  res.sendFile(cfg.wallpaper, { dotfiles: 'allow' }, err => {
+    if (err && !res.headersSent) res.status(500).end()
+  })
 })
 
 // --- Frontend estático (build de la PWA) ---

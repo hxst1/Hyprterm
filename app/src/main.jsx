@@ -4,11 +4,12 @@ import '@xterm/xterm/css/xterm.css'
 import './theme.css'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
-import { applyTheme } from './prefs.js'
+import { applyTheme, applyWallpaper } from './prefs.js'
 import { migrateLegacyToken } from './tokens.js'
 
 migrateLegacyToken() // mono-host → host 'local'
 applyTheme()
+applyWallpaper() // modo 'custom' aplica ya; 'host' se reintenta al entrar (necesita token)
 
 // Geometría real visible: el teclado de iOS no redimensiona el layout viewport,
 // reduce el visualViewport y además lo DESPLAZA (offsetTop) para enfocar el

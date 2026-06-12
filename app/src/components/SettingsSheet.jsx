@@ -1,12 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   allThemes, currentTheme, setTheme, validateTheme,
-  fontSize, setFontSize, FONT_MIN, FONT_MAX, subscribe
+  fontSize, setFontSize, FONT_MIN, FONT_MAX, subscribe,
+  wallpaperMode, setWallpaperMode, wallpaperDim, setWallpaperDim, setCustomWallpaper
 } from '../prefs.js'
 import {
   hosts, activeHostId, setActiveHost, addHost, removeHost, LOCAL_ID
 } from '../hosts.js'
-import { pingHost } from '../api.js'
+import { pingHost, api } from '../api.js'
+
+// Reescala una imagen a un máximo de lado y la devuelve como data URL JPEG,
+// para no llenar localStorage con la imagen original a tamaño completo.
+function downscaleImage(file, maxSide = 1920, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(img.src)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
 
 export default function SettingsSheet({ onClose, onLock }) {
   const [, force] = useState(0)
@@ -23,6 +43,28 @@ export default function SettingsSheet({ onClose, onLock }) {
   const [newName, setNewName] = useState('')
   const [newUrl, setNewUrl] = useState('')
   const [hostError, setHostError] = useState('')
+
+  // wallpaper
+  const [hostHasWall, setHostHasWall] = useState(false)
+  const [wallError, setWallError] = useState('')
+  const fileRef = useRef(null)
+  useEffect(() => {
+    api('/api/health').then(h => setHostHasWall(Boolean(h?.wallpaper))).catch(() => {})
+  }, [])
+
+  async function pickWallpaper(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite re-elegir el mismo archivo
+    if (!file) return
+    setWallError('')
+    try {
+      const dataUrl = await downscaleImage(file)
+      setCustomWallpaper(dataUrl)
+      await setWallpaperMode('custom')
+    } catch {
+      setWallError('no pude cargar esa imagen')
+    }
+  }
 
   async function pingAll() {
     const list = hosts()
@@ -132,6 +174,37 @@ export default function SettingsSheet({ onClose, onLock }) {
           <b>{size}px</b>
           <button className="key" onClick={() => setFontSize(size + 1)} disabled={size >= FONT_MAX}>A+</button>
         </div>
+
+        <h3>fondo</h3>
+        <div className="wall-modes">
+          <button
+            className={`key ${wallpaperMode() === 'none' ? 'sticky-on' : ''}`}
+            onClick={() => setWallpaperMode('none')}
+          >ninguno</button>
+          <button
+            className={`key ${wallpaperMode() === 'host' ? 'sticky-on' : ''}`}
+            onClick={() => setWallpaperMode('host')}
+            disabled={!hostHasWall}
+            title={hostHasWall ? '' : 'este host no tiene wallpaper configurado'}
+          >del host</button>
+          <button
+            className={`key ${wallpaperMode() === 'custom' ? 'sticky-on' : ''}`}
+            onClick={() => fileRef.current?.click()}
+          >subir…</button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickWallpaper} />
+        </div>
+        {wallError && <div className="errmsg">{wallError}</div>}
+        {wallpaperMode() !== 'none' && (
+          <label className="dim-row">
+            <span>atenuar</span>
+            <input
+              type="range" min="0" max="90" step="5"
+              value={wallpaperDim()}
+              onChange={e => setWallpaperDim(Number(e.target.value))}
+            />
+            <b>{wallpaperDim()}%</b>
+          </label>
+        )}
 
         <h3>tema propio</h3>
         <textarea

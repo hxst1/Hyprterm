@@ -52,14 +52,20 @@ html, body, #root {
   touch-action: manipulation;
 }
 
-/* Wallpaper a pantalla completa en el body (no en .shell): así cubre también
-   los safe areas y la zona que deja el teclado de iOS al encoger el viewport,
-   sin que se vea un color distinto detrás. */
+/* Fondo a pantalla completa en el body (no en .shell): así cubre también los
+   safe areas y la zona que deja el teclado de iOS al encoger el viewport, sin
+   que se vea un color distinto detrás. Capas (de arriba a abajo): oscurecido
+   para legibilidad → imagen de wallpaper (si hay) → gradiente de fallback. */
 body {
   background:
+    linear-gradient(var(--bg-dim, transparent), var(--bg-dim, transparent)),
+    var(--bg-image, none),
     radial-gradient(120% 90% at 80% -10%, var(--wall-a) 0%, transparent 60%),
     radial-gradient(100% 80% at 10% 110%, var(--wall-b) 0%, transparent 55%),
     var(--bg0);
+  background-size: cover, cover, auto, auto, auto;
+  background-position: center;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
@@ -187,7 +193,7 @@ body {
 .term-inner {
   height: 100%;
   border-radius: 10px;
-  background: var(--term-bg);
+  background: var(--term-panel, var(--term-bg));
   padding: 8px 4px 8px 10px;
   overflow: hidden;
 }
@@ -346,6 +352,12 @@ body {
 }
 .fontsize-row .key { font-size: 15px; min-width: 44px; }
 .fontsize-row b { color: var(--accent); font-size: 15px; min-width: 44px; text-align: center; }
+
+.wall-modes { display: flex; gap: 6px; }
+.wall-modes .key { flex: 1; }
+.dim-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--subtext); font-size: 13px; }
+.dim-row input[type=range] { flex: 1; accent-color: var(--accent); }
+.dim-row b { color: var(--accent); min-width: 40px; text-align: right; }
 
 .sheet textarea {
   width: 100%;

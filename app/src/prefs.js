@@ -1,14 +1,19 @@
-// Preferencias de apariencia: tema y tamaño de fuente.
+// Preferencias de apariencia: tema, tamaño de fuente y wallpaper de fondo.
 // Store mínimo con suscripción (las TermView vivas se actualizan al instante).
 import { PRESETS } from './themes/presets.js'
-import { api } from './api.js'
+import { api, wallpaperObjectUrl } from './api.js'
 
 const THEME_KEY = 'hyprterm_theme'        // id de preset/tema del host, o JSON custom
 const FONT_KEY = 'hyprterm_fontsize'
+const WALL_MODE_KEY = 'hyprterm_wall_mode'   // 'none' | 'host' | 'custom'
+const WALL_DIM_KEY = 'hyprterm_wall_dim'     // % de oscurecido (0–90)
+const WALL_CUSTOM_KEY = 'hyprterm_wall_img'  // data URL de imagen subida
 
 export const FONT_MIN = 9
 export const FONT_MAX = 22
 const FONT_DEFAULT = 13
+
+export const WALL_DIM_DEFAULT = 40
 
 const listeners = new Set()
 let hostThemes = []                        // de ~/.config/hyprterm/themes/ vía API
@@ -68,9 +73,18 @@ export function setTheme(idOrJson) {
   emit()
 }
 
+// ¿se necesita terminal translúcida? sí cuando hay wallpaper, para que se vea
+// el fondo a través del texto.
+export function terminalTransparent() {
+  return wallpaperMode() !== 'none'
+}
+
 export function xtermTheme() {
   const t = currentTheme()
-  return { ...t.terminal, background: t.terminal.background ?? t.ui.bg2 }
+  const background = terminalTransparent()
+    ? 'rgba(0,0,0,0)' // transparente: el panel deja ver el wallpaper
+    : (t.terminal.background ?? t.ui.bg2)
+  return { ...t.terminal, background }
 }
 
 // Vuelca la paleta ui a variables CSS (theme.css las consume)
@@ -88,6 +102,83 @@ export function applyTheme() {
   }
   for (const [k, v] of Object.entries(vars)) root.setProperty(k, v)
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', ui.bg0)
+  paintBackground() // el oscurecido del wallpaper depende de bg0 del tema
+}
+
+// --- wallpaper de fondo ---
+
+// Convierte un hex (#rrggbb) + porcentaje a rgba para la capa de oscurecido.
+export function dimRgba(hex, pct) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex ?? '')
+  const n = m ? parseInt(m[1], 16) : 0
+  const a = Math.max(0, Math.min(90, Number(pct) || 0)) / 100
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+}
+
+export function wallpaperMode() {
+  const m = localStorage.getItem(WALL_MODE_KEY)
+  return m === 'host' || m === 'custom' ? m : 'none'
+}
+
+export function wallpaperDim() {
+  const n = Number(localStorage.getItem(WALL_DIM_KEY))
+  return n >= 0 && n <= 90 ? n : WALL_DIM_DEFAULT
+}
+
+export function setWallpaperDim(n) {
+  localStorage.setItem(WALL_DIM_KEY, String(Math.max(0, Math.min(90, n))))
+  paintBackground()
+  emit()
+}
+
+export function customWallpaper() {
+  return localStorage.getItem(WALL_CUSTOM_KEY)
+}
+
+export function setCustomWallpaper(dataUrl) {
+  if (dataUrl) localStorage.setItem(WALL_CUSTOM_KEY, dataUrl)
+  else localStorage.removeItem(WALL_CUSTOM_KEY)
+}
+
+let resolvedBgUrl = null   // url de imagen actual (object URL o data URL)
+let lastObjectUrl = null   // para revocar el object URL anterior y no fugar memoria
+
+// Pinta el fondo del body desde la imagen resuelta + el oscurecido del tema.
+function paintBackground() {
+  const root = document.documentElement.style
+  const transparent = terminalTransparent()
+  if (resolvedBgUrl) {
+    root.setProperty('--bg-image', `url("${resolvedBgUrl}")`)
+    root.setProperty('--bg-dim', dimRgba(currentTheme().ui.bg0, wallpaperDim()))
+  } else {
+    root.setProperty('--bg-image', 'none')
+    root.setProperty('--bg-dim', 'transparent')
+  }
+  // panel del terminal: opaco normalmente, semitransparente sobre wallpaper
+  root.setProperty('--term-panel', transparent
+    ? 'color-mix(in srgb, var(--term-bg) 58%, transparent)'
+    : 'var(--term-bg)')
+}
+
+// Resuelve la imagen según el modo (host = fetch autenticado) y la pinta.
+export async function applyWallpaper() {
+  const mode = wallpaperMode()
+  let url = null
+  if (mode === 'custom') {
+    url = customWallpaper()
+  } else if (mode === 'host') {
+    url = await wallpaperObjectUrl()
+    if (lastObjectUrl) URL.revokeObjectURL(lastObjectUrl)
+    lastObjectUrl = url
+  }
+  resolvedBgUrl = url
+  paintBackground()
+  emit()
+}
+
+export async function setWallpaperMode(mode) {
+  localStorage.setItem(WALL_MODE_KEY, mode)
+  await applyWallpaper()
 }
 
 // Temas del host (~/.config/hyprterm/themes/*.json). Silencioso si falla.
