@@ -131,17 +131,32 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
     })
 
     // Scroll táctil: xterm.js solo soporta rueda de ratón. Convertimos el gesto
-    // en eventos de rueda sintéticos para que siga su pipeline normal: con el
-    // mouse-tracking de tmux activo se traducen a scroll de copy-mode (historial
-    // real del pane), y sin tracking caen en el scrollback local de xterm.
+    // VERTICAL en eventos de rueda sintéticos (que con mouse-tracking de tmux
+    // entran en copy-mode y sin él caen en el scrollback local) y cancelamos el
+    // evento para que la página no se mueva: la UI es estática, solo scrollea la
+    // terminal. El gesto HORIZONTAL se deja pasar para el deslizamiento entre
+    // terminales del pager.
     const holder = holderRef.current
-    let touchY = null
-    const onTouchStart = e => { touchY = e.touches[0].clientY }
-    const onTouchMove = e => {
-      if (touchY === null) return
+    let startX = 0, startY = 0, lastY = 0
+    let axis = null // null = sin decidir, 'v' = vertical, 'h' = horizontal
+    const onTouchStart = e => {
       const t = e.touches[0]
-      const dy = touchY - t.clientY
-      touchY = t.clientY
+      startX = t.clientX; startY = t.clientY; lastY = t.clientY
+      axis = null
+    }
+    const onTouchMove = e => {
+      const t = e.touches[0]
+      if (axis === null) {
+        const dx = Math.abs(t.clientX - startX)
+        const dy = Math.abs(t.clientY - startY)
+        if (dx < 8 && dy < 8) return // aún no hay dirección clara
+        axis = dy >= dx ? 'v' : 'h'
+      }
+      if (axis === 'h') return // deslizamiento del pager: dejar el scroll nativo
+      // vertical: scrollea la terminal y bloquea el scroll de la página
+      if (e.cancelable) e.preventDefault()
+      const dy = lastY - t.clientY
+      lastY = t.clientY
       if (!dy) return
       holder.querySelector('.xterm-viewport')?.dispatchEvent(new WheelEvent('wheel', {
         deltaY: dy,
@@ -152,9 +167,10 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
         cancelable: true
       }))
     }
-    const onTouchEnd = () => { touchY = null }
+    const onTouchEnd = () => { axis = null }
     holder.addEventListener('touchstart', onTouchStart, { passive: true })
-    holder.addEventListener('touchmove', onTouchMove, { passive: true })
+    // passive:false para poder preventDefault y mantener la página estática
+    holder.addEventListener('touchmove', onTouchMove, { passive: false })
     holder.addEventListener('touchend', onTouchEnd)
 
     const ro = new ResizeObserver(doFit)
