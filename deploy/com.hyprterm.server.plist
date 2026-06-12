@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  hyprterm-server en macOS (LaunchAgent de usuario).
+
+  Instalar:
+    1. Sustituye __HOME__ por tu home (p. ej. /Users/eya):
+         sed -i '' "s#__HOME__#$HOME#g" ~/hyprterm/deploy/com.hyprterm.server.plist
+    2. cp ~/hyprterm/deploy/com.hyprterm.server.plist ~/Library/LaunchAgents/
+    3. launchctl load -w ~/Library/LaunchAgents/com.hyprterm.server.plist
+
+  Se arranca con `sh -lc` (shell de login) para heredar el PATH de tu gestor de
+  node (Homebrew, fnm, nvm…); así no hay que hardcodear la ruta de node.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hyprterm.server</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-lc</string>
+    <string>exec node src/index.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__HOME__/hyprterm/server</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/hyprterm.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/hyprterm.log</string>
+</dict>
+</plist>

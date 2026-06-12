@@ -9,8 +9,11 @@ iPhone (PWA) ──wss──► Tailscale ──► Arch: hyprterm-server ──
 
 - **Persistente**: las ventanas son ventanas de tmux; sobreviven a desconexiones.
 - **Multi-ventana**: desliza entre terminales, créalas con `+`, ciérralas con `✕`.
+- **Multi-host**: añade otras máquinas del tailnet (cada una con su hyprterm-server)
+  y cambia entre ellas desde ajustes; cada host con su propia contraseña.
+- **Temas**: presets (Sakura, Catppuccin, Gruvbox, Nord, Tokyo Night) + temas propios.
 - **Waybar** propia con workspaces, cpu, mem, batería y reloj (respeta la isla del iPhone).
-- **Barra de teclas**: esc, tab, ctrl/alt pegajosos, flechas, símbolos.
+- **Barra de teclas**: esc, tab, ctrl/alt pegajosos, flechas, símbolos, pegar.
 - **Seguridad**: solo accesible dentro de tu Tailnet + contraseña (scrypt) + token con caducidad.
 
 > Mejoras planificadas: ver [ROADMAP.md](ROADMAP.md).
@@ -20,7 +23,7 @@ iPhone (PWA) ──wss──► Tailscale ──► Arch: hyprterm-server ──
 - `server/` — Node: Express + ws + node-pty. Un pty por conexión, adjuntado a una
   *sesión agrupada* de tmux (cada vista del móvil puede mirar una ventana distinta).
 - `app/` — PWA: Vite + React + xterm.js. El build (`app/dist`) lo sirve el propio server.
-- `deploy/` — unidad systemd de usuario.
+- `deploy/` — unidad systemd (Linux) y LaunchAgent (macOS).
 
 ## Desarrollo (en cualquier máquina con node + pnpm + tmux)
 
@@ -53,6 +56,40 @@ cp ~/hyprterm/deploy/hyprterm.service ~/.config/systemd/user/
 systemctl --user enable --now hyprterm
 loginctl enable-linger $USER    # sigue corriendo aunque no haya sesión abierta
 ```
+
+## Despliegue en macOS
+
+Mismo server, distinto gestor de servicios (launchd en vez de systemd):
+
+```bash
+brew install node pnpm tmux
+brew install --cask tailscale   # o la app de la App Store
+
+git clone <este-repo> ~/hyprterm
+cd ~/hyprterm && pnpm install
+pnpm setpass <tu-contraseña>
+pnpm build
+
+# sustituye __HOME__ por tu home y carga el LaunchAgent
+sed -i '' "s#__HOME__#$HOME#g" ~/hyprterm/deploy/com.hyprterm.server.plist
+cp ~/hyprterm/deploy/com.hyprterm.server.plist ~/Library/LaunchAgents/
+launchctl load -w ~/Library/LaunchAgents/com.hyprterm.server.plist
+```
+
+Luego expón el puerto con `tailscale serve --bg 7705` igual que en Linux. Los logs
+van a `~/Library/Logs/hyprterm.log`.
+
+## Multi-host: varias máquinas
+
+Cada máquina corre su propio `hyprterm-server` (es autónomo, no hay un "hub").
+En la PWA, ve a **ajustes (⚙) → hosts → + añadir host** e introduce la URL de la
+otra máquina (p. ej. `mac.tu-tailnet.ts.net`). La lista muestra el estado
+online/offline de cada host (ping a `/api/health`) y tocas uno para cambiarte;
+cada host tiene su propia contraseña y su propio login.
+
+La PWA instalada vive en un único origen (el host que la sirvió), así que habla
+con los demás por CORS — el server refleja el `Origin` de la petición. No hay
+saltos SSH ni claves que gestionar: cada host es independiente.
 
 ### HTTPS con Tailscale (necesario para instalar la PWA en iOS)
 

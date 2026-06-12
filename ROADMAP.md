@@ -129,28 +129,32 @@ Ordenado por fases: cada una deja el proyecto en un estado estable y desplegable
 
 ## Fase 5 — Multi-host: conectarse a cualquier máquina
 
-La idea grande: pasar de "terminal de mi Arch" a cliente universal de terminales.
-Dos enfoques posibles, decidir antes de implementar:
+**Decisión (2026-06-12): enfoque A — un server por máquina.** Es lo correcto
+para una PWA instalada en iOS: está atada a su origen, así que en vez de navegar
+a otra URL (rompería el contexto de la PWA y abriría Safari) la app se queda en
+su origen y habla con los demás hosts por CORS. Cada host autónomo, sin saltos
+SSH ni claves. El enfoque B (hub SSH) se descarta: punto único de fallo y gestión
+de claves.
 
-- **A. Un server por máquina** (Mac, Arch…): cada host del tailnet corre
-  hyprterm-server y la PWA tiene un registro de hosts (nombre, URL, color).
-  Pros: simple, sin saltos SSH, cada host aislado. Contras: instalar y
-  mantener el server en cada máquina (en macOS: launchd en vez de systemd,
-  y node-pty ya contempla darwin en el postinstall).
-- **B. Un hub que salta por SSH**: un solo server que hace
-  `pty.spawn('ssh', [host, 'tmux', ...])` hacia los demás. Pros: una sola
-  instalación. Contras: depende de que el hub esté encendido, claves SSH.
-
-Requisitos de un host conectable: accesible en el tailnet + tmux instalado
-(+ sshd si enfoque B).
-
-- [ ] Selector de host en la UI (pantalla previa o menú en la waybar),
-      con estado online/offline de cada uno (ping a su `/api/health`).
-- [ ] Token/login por host (enfoque A) y persistencia en localStorage.
-- [ ] **Varias sesiones a la vez**: añadir la dimensión host al pager —
-      workspaces de la waybar agrupados por host, deslizar entre terminales
-      de máquinas distintas sin desconectar las demás.
-- [ ] Soporte macOS del server (launchd plist en `deploy/`).
+- [x] Selector de host en la UI con estado online/offline *(hecho 2026-06-12:
+      sección "hosts" en ajustes con ping a `/api/health` de cada uno —dot
+      verde/rojo—, añadir/quitar/cambiar; switcher también en la pantalla de
+      login. `app/src/hosts.js` + tests)*.
+- [x] Token/login por host y persistencia *(hecho 2026-06-12:
+      `app/src/tokens.js`, claves de token por id de host, migración del
+      formato mono-host al host `local`; `api.js` enruta cada petición/WS al
+      host activo (base URL + conversión http→ws). Server CORS reflejando el
+      Origin, con preflight OPTIONS. Tests unitarios (tokens, hosts, cors) +
+      e2e cross-origin verificado con un 2º host `127.0.0.1`)*.
+- [x] Soporte macOS del server *(hecho 2026-06-12:
+      `deploy/com.hyprterm.server.plist`, LaunchAgent que arranca con `sh -lc`
+      para heredar el PATH del gestor de node; README con los pasos)*.
+- [ ] **Varias sesiones a la vez** (pager con terminales de varios hosts en
+      paralelo): aplazado a propósito. Es un refactor grande (varias control-WS
+      vivas, base de host por TermView en vez de "host activo" único) y de valor
+      dudoso en móvil —mezclar terminales de máquinas distintas en un mismo
+      deslizamiento confunde más que ayuda—. El modelo de "un host activo a la
+      vez con cambio instantáneo" cubre el caso real. Reabrir si se pide.
 
 ## Fase 6 — Adopción: que cualquiera lo use desde GitHub
 
