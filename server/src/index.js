@@ -7,6 +7,7 @@ import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { existsSync } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
 
 import { loadConfig } from './config.js'
 import { verifyPassword, signToken, verifyToken, loginThrottle, recordLogin } from './auth.js'
@@ -88,6 +89,40 @@ app.post('/api/windows', requireAuth, async (req, res) => {
 app.delete('/api/windows/:id', requireAuth, async (req, res) => {
   await tmux.killWindow(req.params.id)
   res.json({ ok: true })
+})
+
+app.patch('/api/windows/:id', requireAuth, async (req, res) => {
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
+  if (!/^@\d+$/.test(req.params.id) || !name || name.length > 50) {
+    res.status(400).json({ error: 'bad_request' })
+    return
+  }
+  await tmux.renameWindow(req.params.id, name)
+  res.json({ ok: true })
+})
+
+// Temas del usuario: archivos JSON en ~/.config/hyprterm/themes/
+const themesDir = join(os.homedir(), '.config', 'hyprterm', 'themes')
+
+app.get('/api/themes', requireAuth, async (_req, res) => {
+  let files = []
+  try {
+    files = (await readdir(themesDir)).filter(f => f.endsWith('.json'))
+  } catch {
+    res.json([]) // el directorio no existe: sin temas propios
+    return
+  }
+  const themes = []
+  for (const f of files) {
+    try {
+      const theme = JSON.parse(await readFile(join(themesDir, f), 'utf8'))
+      theme.id = theme.id ?? f.replace(/\.json$/, '')
+      themes.push(theme)
+    } catch (err) {
+      console.error(`tema ${f} ilegible:`, err.message)
+    }
+  }
+  res.json(themes)
 })
 
 app.get('/api/stats', requireAuth, async (_req, res) => {

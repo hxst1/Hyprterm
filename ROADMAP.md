@@ -55,25 +55,33 @@ Ordenado por fases: cada una deja el proyecto en un estado estable y desplegable
 
 ## Fase 3 — Features de uso diario
 
-- [ ] **Tema Sakura** acorde al rice (fondo `#1a1622`, texto `#f0e6e0`, lilas
-      `#c9a8d4`/`#b388c4`, dorado `#e8b88a`, rosa `#d47a9a`, verde `#a8c9a0`):
-      variables en `theme.css` + tema xterm en `TermView.jsx`. Selector
-      Sakura/Catppuccin persistido en localStorage.
-- [ ] **Sistema de theming abierto**: que cualquier usuario adapte la app a su
-      entorno y terminales. Temas como JSON declarativo (paleta UI + tema
-      xterm en un solo archivo), presets incluidos (Catppuccin, Sakura,
-      Gruvbox, Nord, Tokyo Night…), selector en la UI con vista previa, y
-      carga de temas propios (pegar JSON o archivo en `~/.config/hyprterm/themes/`).
-      Idealmente compatible/convertible desde esquemas de colores estándar de
-      terminal (base16, Ghostty/kitty/alacritty) para importar el del usuario.
-- [ ] **Renombrar ventanas**: `tmux.js` ya exporta `renameWindow`; falta la ruta
-      `PATCH /api/windows/:id` y la UI (long-press sobre el título en la waybar).
-- [ ] **Botón de pegar** en la KeyBar (`navigator.clipboard.readText()`).
-- [ ] **Addons de xterm**: `@xterm/addon-webgl` (rendimiento en iPhone),
-      `@xterm/addon-web-links` (URLs tappables) y `@xterm/addon-unicode11`
-      (anchos correctos con la Nerd Font).
-- [ ] **Tamaño de fuente ajustable** (pinch o botones ±) persistido en
-      localStorage.
+- [x] **Tema Sakura** *(hecho 2026-06-12 como parte del sistema de theming;
+      es el tema por defecto)*.
+- [x] **Sistema de theming abierto** *(hecho 2026-06-12: temas JSON
+      declarativos `{id, name, ui, terminal}` — `ui` con slots semánticos
+      (bg/surface/text/accent/good/bad/warn/wallpaper) volcados a variables
+      CSS por `prefs.js`, `terminal` es el ITheme de xterm. 5 presets
+      (Sakura, Catppuccin Mocha, Gruvbox, Nord, Tokyo Night) en
+      `app/src/themes/presets.js`, panel de ajustes (engranaje en la waybar)
+      con cambio en vivo, pegado de JSON validado, y `GET /api/themes` que
+      sirve `~/.config/hyprterm/themes/*.json` del host)*. Pendiente de la
+      idea original: conversor desde esquemas estándar (base16/kitty/
+      Ghostty/alacritty) — queda como mejora futura.
+- [x] **Renombrar ventanas** *(hecho 2026-06-12: `PATCH /api/windows/:id`
+      con validación de id `@N` y nombre ≤50 chars; long-press de 550 ms
+      sobre el chip activo de la waybar)*.
+- [x] **Botón de pegar** *(hecho 2026-06-12: en la KeyBar, vía `term.paste()`
+      que respeta bracketed paste; pointerdown+preventDefault para no cerrar
+      el teclado iOS y click para conservar la activación de usuario que
+      exige el clipboard)*.
+- [x] **Addons de xterm** *(hecho 2026-06-12: webgl con fallback a DOM si no
+      hay contexto, web-links con `window.open`, unicode11 — requiere
+      `allowProposedApi: true`. El fondo de xterm pasó de transparente a
+      opaco vía `--term-bg` porque WebGL no pinta transparencias)*.
+- [x] **Tamaño de fuente ajustable** *(hecho 2026-06-12: botones A−/A+ en
+      ajustes, 9–22 px, persistido; las terminales vivas se redimensionan al
+      momento. Pinch descartado de momento: los botones cubren el caso y el
+      gesto chocaría con el scroll táctil)*.
 
 ## Fase 4 — Push en vez de polling
 
