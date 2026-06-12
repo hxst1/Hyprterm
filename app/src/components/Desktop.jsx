@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from '../api.js'
+import { api, controlWsUrl } from '../api.js'
 import Waybar from './Waybar.jsx'
 import TermView from './TermView.jsx'
 import KeyBar from './KeyBar.jsx'
@@ -8,6 +8,7 @@ import { loadHostThemes } from '../prefs.js'
 
 export default function Desktop({ onAuthLost }) {
   const [windows, setWindows] = useState([])
+  const [stats, setStats] = useState(null)
   const [activeIdx, setActiveIdx] = useState(0)
   const [mods, setMods] = useState({ ctrl: false, alt: false, shift: false })
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -18,25 +19,71 @@ export default function Desktop({ onAuthLost }) {
   modsRef.current = mods
   const scrollToEndRef = useRef(false)
 
+  const applyWindows = useCallback(ws => {
+    setWindows(prev => {
+      const same = prev.length === ws.length &&
+        prev.every((w, i) => w.id === ws[i].id && w.name === ws[i].name && w.command === ws[i].command)
+      return same ? prev : ws
+    })
+  }, [])
+
+  // Carga inicial por HTTP (rápida) — luego el WS de control empuja los cambios
   const refresh = useCallback(async () => {
     try {
-      const ws = await api('/api/windows')
-      setWindows(prev => {
-        const same = prev.length === ws.length &&
-          prev.every((w, i) => w.id === ws[i].id && w.name === ws[i].name && w.command === ws[i].command)
-        return same ? prev : ws
-      })
+      applyWindows(await api('/api/windows'))
     } catch (err) {
       if (err.status === 401) onAuthLost()
     }
-  }, [onAuthLost])
+  }, [applyWindows, onAuthLost])
 
   useEffect(() => {
     refresh()
     loadHostThemes() // ya hay sesión: trae los temas de ~/.config/hyprterm/themes/
-    const t = setInterval(refresh, 4000)
-    return () => clearInterval(t)
   }, [refresh])
+
+  // WS de control: push de ventanas y stats en vez de polling
+  useEffect(() => {
+    let ws = null
+    let closed = false
+    let retry = 0
+    let timer = null
+
+    async function connect() {
+      if (closed) return
+      let url
+      try {
+        url = await controlWsUrl()
+      } catch (err) {
+        if (err.status === 401) { onAuthLost(); return }
+        schedule()
+        return
+      }
+      if (closed) return
+      ws = new WebSocket(url)
+      ws.onopen = () => { retry = 0 }
+      ws.onmessage = e => {
+        try {
+          const msg = JSON.parse(e.data)
+          if (msg.type === 'windows') applyWindows(msg.windows)
+          else if (msg.type === 'stats') setStats(msg.stats)
+        } catch { /* mensaje malformado */ }
+      }
+      ws.onclose = () => { if (!closed) schedule() }
+    }
+
+    function schedule() {
+      const wait = Math.min(8000, 1000 * 2 ** retry)
+      retry += 1
+      timer = setTimeout(connect, wait)
+    }
+
+    connect()
+    return () => {
+      closed = true
+      clearTimeout(timer)
+      ws?.close()
+    }
+  }, [applyWindows, onAuthLost])
 
   // Tras crear una ventana, desliza hasta ella
   useEffect(() => {
@@ -140,6 +187,7 @@ export default function Desktop({ onAuthLost }) {
     <div className="shell">
       <Waybar
         windows={windows}
+        stats={stats}
         activeIdx={activeIdx}
         onSelect={scrollToPage}
         onNew={newWindow}

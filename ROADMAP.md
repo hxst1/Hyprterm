@@ -85,9 +85,17 @@ Ordenado por fases: cada una deja el proyecto en un estado estable y desplegable
 
 ## Fase 4 — Push en vez de polling
 
-- [ ] Sustituir el polling de `/api/windows` cada 4 s (`Desktop.jsx`) y el de
+- [x] Sustituir el polling de `/api/windows` cada 4 s (`Desktop.jsx`) y el de
       stats por un **WS de control** que emita cambios de ventanas y stats del
-      sistema. Menos batería en el iPhone y waybar reactiva al instante.
+      sistema. *(hecho 2026-06-12: `/ws/control` autenticado por ticket; un
+      único vigilante en el server (solo activo con clientes conectados)
+      barre ventanas cada 2 s y emite solo si hay cambios + stats cada 4 s;
+      las mutaciones de la API difunden al momento. El cliente mantiene una
+      carga HTTP inicial y reconexión con backoff. Verificado: 0 peticiones
+      HTTP en reposo y cambios externos de tmux llegando solos a la waybar.
+      Gotcha: dos `WebSocketServer({server, path})` sobre el mismo http.Server
+      se pisan el handshake — hay que usar `noServer` + enrutado manual del
+      upgrade)*.
 
 ## Fase 5 — Multi-host: conectarse a cualquier máquina
 

@@ -60,16 +60,19 @@ export async function api(path, { method = 'GET', body, timeoutMs = 6000 } = {})
   return data
 }
 
-// El WS se abre con un ticket de un solo uso en vez del token,
+// Los WS se abren con un ticket de un solo uso en vez del token,
 // para que el token no acabe en logs de proxies vía query string.
-export async function termWsUrl(windowId, cols, rows) {
+async function wsUrl(path, params = {}) {
   const { ticket } = await api('/api/ws-ticket', { method: 'POST' })
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const params = new URLSearchParams({
-    ticket,
-    window: String(windowId),
-    cols: String(cols),
-    rows: String(rows)
-  })
-  return `${proto}://${location.host}/ws/term?${params}`
+  const qs = new URLSearchParams({ ticket, ...params })
+  return `${proto}://${location.host}${path}?${qs}`
+}
+
+export function termWsUrl(windowId, cols, rows) {
+  return wsUrl('/ws/term', { window: String(windowId), cols: String(cols), rows: String(rows) })
+}
+
+export function controlWsUrl() {
+  return wsUrl('/ws/control')
 }

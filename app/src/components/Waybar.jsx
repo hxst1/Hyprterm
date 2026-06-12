@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api.js'
 
 function useClock() {
   const [now, setNow] = useState(() => new Date())
@@ -10,26 +9,9 @@ function useClock() {
   return now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 }
 
-function useStats() {
-  const [stats, setStats] = useState(null)
-  useEffect(() => {
-    let alive = true
-    async function poll() {
-      try {
-        const s = await api('/api/stats')
-        if (alive) setStats(s)
-      } catch { /* sin stats no pasa nada */ }
-    }
-    poll()
-    const t = setInterval(poll, 5000)
-    return () => { alive = false; clearInterval(t) }
-  }, [])
-  return stats
-}
-
-export default function Waybar({ windows, activeIdx, onSelect, onNew, onKill, onRename, onSettings }) {
+// stats llegan por props desde el WS de control (Desktop) — la waybar ya no sondea
+export default function Waybar({ windows, stats, activeIdx, onSelect, onNew, onKill, onRename, onSettings }) {
   const clock = useClock()
-  const stats = useStats()
   const memPct = stats ? Math.round((stats.mem.used / stats.mem.total) * 100) : null
 
   // long-press sobre el chip activo = renombrar ventana

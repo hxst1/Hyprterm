@@ -84,11 +84,13 @@ app.post('/api/windows', requireAuth, async (req, res) => {
   await tmux.ensureSession(cfg.session, cfg.shell)
   const id = await tmux.newWindow(cfg.session, req.body?.name, cfg.shell)
   res.json(await tmux.listWindows(cfg.session).then(ws => ws.find(w => w.id === id)))
+  broadcastWindows()
 })
 
 app.delete('/api/windows/:id', requireAuth, async (req, res) => {
   await tmux.killWindow(req.params.id)
   res.json({ ok: true })
+  broadcastWindows()
 })
 
 app.patch('/api/windows/:id', requireAuth, async (req, res) => {
@@ -99,6 +101,7 @@ app.patch('/api/windows/:id', requireAuth, async (req, res) => {
   }
   await tmux.renameWindow(req.params.id, name)
   res.json({ ok: true })
+  broadcastWindows()
 })
 
 // Temas del usuario: archivos JSON en ~/.config/hyprterm/themes/
@@ -143,10 +146,94 @@ app.use((err, _req, res, _next) => {
   if (!res.headersSent) res.status(500).json({ error: 'internal' })
 })
 
-// --- WebSocket: un pty por conexión, adjuntado a una vista agrupada de tmux ---
+// --- WebSockets ---
+// noServer + enrutado manual del upgrade: dos WebSocketServer colgados del
+// mismo http.Server se pisan el handshake entre sí.
 const server = createServer(app)
-const wss = new WebSocketServer({ server, path: '/ws/term' })
+const controlWss = new WebSocketServer({ noServer: true })
+const wss = new WebSocketServer({ noServer: true })
 
+server.on('upgrade', (req, socket, head) => {
+  const { pathname } = new URL(req.url, 'http://localhost')
+  const target = pathname === '/ws/control' ? controlWss : pathname === '/ws/term' ? wss : null
+  if (!target) {
+    socket.destroy()
+    return
+  }
+  target.handleUpgrade(req, socket, head, ws => target.emit('connection', ws, req))
+})
+
+// --- WebSocket de control: push de ventanas y stats (sustituye al polling) ---
+// Un solo vigilante en el host difunde a todos los clientes; el iPhone no sondea.
+
+const WINDOWS_SWEEP_MS = 2000   // cambios hechos fuera de la API (p. ej. desde el PC)
+const STATS_EVERY_TICKS = 2     // stats cada 2 barridos (4 s)
+
+let lastWindowsJson = ''
+let controlTimer = null
+let tick = 0
+
+function controlSend(payload) {
+  const msg = JSON.stringify(payload)
+  for (const client of controlWss.clients) {
+    if (client.readyState === client.OPEN) client.send(msg)
+  }
+}
+
+async function broadcastWindows(force = false) {
+  if (controlWss.clients.size === 0) return
+  try {
+    await tmux.ensureSession(cfg.session, cfg.shell)
+    const windows = await tmux.listWindows(cfg.session)
+    const json = JSON.stringify(windows)
+    if (force || json !== lastWindowsJson) {
+      lastWindowsJson = json
+      controlSend({ type: 'windows', windows })
+    }
+  } catch (err) {
+    console.error('error difundiendo ventanas:', err.message)
+  }
+}
+
+async function broadcastStats() {
+  if (controlWss.clients.size === 0) return
+  try {
+    controlSend({ type: 'stats', stats: await getStats() })
+  } catch { /* sin stats no pasa nada */ }
+}
+
+controlWss.on('connection', async (ws, req) => {
+  const url = new URL(req.url, 'http://localhost')
+  if (!consumeWsTicket(url.searchParams.get('ticket'))) {
+    ws.close(4001, 'unauthorized')
+    return
+  }
+  // estado inicial inmediato para este cliente
+  try {
+    await tmux.ensureSession(cfg.session, cfg.shell)
+    const windows = await tmux.listWindows(cfg.session)
+    lastWindowsJson = JSON.stringify(windows)
+    ws.send(JSON.stringify({ type: 'windows', windows }))
+    ws.send(JSON.stringify({ type: 'stats', stats: await getStats() }))
+  } catch (err) {
+    console.error('error en estado inicial de control:', err.message)
+  }
+  // el vigilante solo corre mientras haya clientes conectados
+  if (!controlTimer) {
+    controlTimer = setInterval(async () => {
+      await broadcastWindows()
+      if (++tick % STATS_EVERY_TICKS === 0) await broadcastStats()
+    }, WINDOWS_SWEEP_MS)
+  }
+  ws.on('close', () => {
+    if (controlWss.clients.size === 0 && controlTimer) {
+      clearInterval(controlTimer)
+      controlTimer = null
+    }
+  })
+})
+
+// --- WebSocket de terminal: un pty por conexión, adjuntado a una vista agrupada de tmux ---
 wss.on('connection', async (ws, req) => {
   const url = new URL(req.url, 'http://localhost')
   if (!consumeWsTicket(url.searchParams.get('ticket'))) {
