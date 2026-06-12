@@ -5,7 +5,7 @@ import { CONFIG_PATH } from './config.js'
 
 const password = process.argv[2]
 if (!password || password.length < 8) {
-  console.error('Uso: npm run setpass -- <contraseña>  (mínimo 8 caracteres)')
+  console.error('Uso: pnpm setpass <contraseña>  (mínimo 8 caracteres)')
   process.exit(1)
 }
 

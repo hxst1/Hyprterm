@@ -13,6 +13,8 @@ iPhone (PWA) ──wss──► Tailscale ──► Arch: hyprterm-server ──
 - **Barra de teclas**: esc, tab, ctrl/alt pegajosos, flechas, símbolos.
 - **Seguridad**: solo accesible dentro de tu Tailnet + contraseña (scrypt) + token con caducidad.
 
+> Mejoras planificadas: ver [ROADMAP.md](ROADMAP.md).
+
 ## Estructura
 
 - `server/` — Node: Express + ws + node-pty. Un pty por conexión, adjuntado a una
@@ -20,30 +22,31 @@ iPhone (PWA) ──wss──► Tailscale ──► Arch: hyprterm-server ──
 - `app/` — PWA: Vite + React + xterm.js. El build (`app/dist`) lo sirve el propio server.
 - `deploy/` — unidad systemd de usuario.
 
-## Desarrollo (en cualquier máquina con node + tmux)
+## Desarrollo (en cualquier máquina con node + pnpm + tmux)
 
 ```bash
-cd server && npm install
-npm run setpass -- <tu-contraseña>
-npm start                      # API + WS en :7705
+pnpm install                   # workspace: server + app
+pnpm setpass <tu-contraseña>
+pnpm start                     # API + WS en :7705
 
-cd ../app && npm install
-npm run dev                    # Vite en :5173 con proxy al server
+pnpm dev                       # Vite en :5173 con proxy al server
 # o build de producción servido por el server:
-npm run build                  # → app/dist, accesible en http://localhost:7705
+pnpm build                     # → app/dist, accesible en http://localhost:7705
+
+pnpm test                      # tests del server (auth)
 ```
 
 ## Despliegue en Arch
 
 ```bash
-sudo pacman -S --needed nodejs npm tmux tailscale
+sudo pacman -S --needed nodejs pnpm tmux tailscale
 sudo systemctl enable --now tailscaled
 sudo tailscale up
 
 git clone <este-repo> ~/hyprterm
-cd ~/hyprterm/server && npm install
-npm run setpass -- <tu-contraseña>
-cd ../app && npm install && npm run build
+cd ~/hyprterm && pnpm install
+pnpm setpass <tu-contraseña>
+pnpm build
 
 mkdir -p ~/.config/systemd/user
 cp ~/hyprterm/deploy/hyprterm.service ~/.config/systemd/user/

@@ -1,0 +1,146 @@
+# Roadmap
+
+Plan de mejoras tras la primera revisión completa del código (2026-06-12).
+Ordenado por fases: cada una deja el proyecto en un estado estable y desplegable.
+
+## Bugs conocidos
+
+- [x] **Scroll roto en el prompt** *(resuelto 2026-06-12)*: la causa NO era
+      `mouse on` sino su ausencia: sin mouse-tracking, xterm.js convierte la
+      rueda en flechas cuando el cliente tmux está en pantalla alternativa
+      (historial del shell). El `mouse on` añadido a `prepareView` en la
+      revisión anterior era el fix correcto, pero el servicio corría aún el
+      código viejo. Verificado end-to-end (Chrome + servicio real): la rueda
+      sintética genera reportes SGR, tmux entra en copy-mode y recorre el
+      scrollback; al volver abajo sale de copy-mode. No hace falta ningún
+      bind custom: el binding por defecto de `WheelUpPane` en tmux 3.6b ya
+      hace `copy-mode -e` (y los binds son globales al server de tmux, así
+      que mejor no tocarlos).
+
+## Fase 1 — Robustez del server
+
+- [x] **Migrar a Express 5** *(hecho 2026-06-12: express@5.2.1 + middleware de
+      error que devuelve 500 JSON; las rutas async ya no dejan peticiones
+      colgadas si tmux falla)*.
+- [x] **Sacar el token de la query string del WebSocket** *(hecho 2026-06-12:
+      `POST /api/ws-ticket` emite ticket de un solo uso con TTL 30 s; el WS
+      solo acepta `?ticket=...` — verificado que el 2º uso del mismo ticket y
+      el flujo antiguo con token se rechazan con 4001)*. Nota: para el cliente
+      el 4001 ya no significa "sesión caducada" sino "pide otro ticket"; la
+      pérdida de auth se detecta en el fetch del ticket (401).
+- [x] **Renovación de token** *(hecho 2026-06-12: `POST /api/refresh`; el
+      cliente renueva en `api.js` cuando queda <25 % del TTL, single-flight,
+      aprovechando el polling de ventanas como latido)*.
+- [x] **Reconexión por `win.id`, no por índice** *(hecho 2026-06-12: el WS
+      lleva `window=@N` validado con `/^@\d+$/` en el server y
+      `select-window -t vista:@N`; el `setTimeout` de reintento se cancela al
+      desmontar)*.
+- [x] **Podar el `Map` de intentos de login** *(hecho 2026-06-12: sweep de
+      entradas >1 h en cada `loginThrottle`)*.
+
+## Fase 2 — Higiene del repo
+
+- [x] **Unificar en pnpm** *(hecho 2026-06-12: workspace raíz con `server` y
+      `app` + scripts de conveniencia (`pnpm dev/build/start/setpass/test`),
+      `package-lock.json` borrados, `app/pnpm-workspace.yaml` suelto eliminado,
+      lock único `pnpm-lock.yaml` en la raíz; `allowBuilds` para esbuild y
+      node-pty)*.
+- [x] Actualizar README a los comandos pnpm *(hecho 2026-06-12; el
+      `deploy/hyprterm.service` no necesitaba cambios: ejecuta
+      `node src/index.js` directamente, sin gestor de paquetes)*.
+- [x] **Tests mínimos** de `server/src/auth.js` *(hecho 2026-06-12:
+      `server/test/auth.test.js` con `node:test` — 8 tests: contraseña,
+      firma/caducidad/manipulación/malformados de tokens y throttle de login.
+      `pnpm test` desde la raíz)*.
+
+## Fase 3 — Features de uso diario
+
+- [ ] **Tema Sakura** acorde al rice (fondo `#1a1622`, texto `#f0e6e0`, lilas
+      `#c9a8d4`/`#b388c4`, dorado `#e8b88a`, rosa `#d47a9a`, verde `#a8c9a0`):
+      variables en `theme.css` + tema xterm en `TermView.jsx`. Selector
+      Sakura/Catppuccin persistido en localStorage.
+- [ ] **Sistema de theming abierto**: que cualquier usuario adapte la app a su
+      entorno y terminales. Temas como JSON declarativo (paleta UI + tema
+      xterm en un solo archivo), presets incluidos (Catppuccin, Sakura,
+      Gruvbox, Nord, Tokyo Night…), selector en la UI con vista previa, y
+      carga de temas propios (pegar JSON o archivo en `~/.config/hyprterm/themes/`).
+      Idealmente compatible/convertible desde esquemas de colores estándar de
+      terminal (base16, Ghostty/kitty/alacritty) para importar el del usuario.
+- [ ] **Renombrar ventanas**: `tmux.js` ya exporta `renameWindow`; falta la ruta
+      `PATCH /api/windows/:id` y la UI (long-press sobre el título en la waybar).
+- [ ] **Botón de pegar** en la KeyBar (`navigator.clipboard.readText()`).
+- [ ] **Addons de xterm**: `@xterm/addon-webgl` (rendimiento en iPhone),
+      `@xterm/addon-web-links` (URLs tappables) y `@xterm/addon-unicode11`
+      (anchos correctos con la Nerd Font).
+- [ ] **Tamaño de fuente ajustable** (pinch o botones ±) persistido en
+      localStorage.
+
+## Fase 4 — Push en vez de polling
+
+- [ ] Sustituir el polling de `/api/windows` cada 4 s (`Desktop.jsx`) y el de
+      stats por un **WS de control** que emita cambios de ventanas y stats del
+      sistema. Menos batería en el iPhone y waybar reactiva al instante.
+
+## Fase 5 — Multi-host: conectarse a cualquier máquina
+
+La idea grande: pasar de "terminal de mi Arch" a cliente universal de terminales.
+Dos enfoques posibles, decidir antes de implementar:
+
+- **A. Un server por máquina** (Mac, Arch…): cada host del tailnet corre
+  hyprterm-server y la PWA tiene un registro de hosts (nombre, URL, color).
+  Pros: simple, sin saltos SSH, cada host aislado. Contras: instalar y
+  mantener el server en cada máquina (en macOS: launchd en vez de systemd,
+  y node-pty ya contempla darwin en el postinstall).
+- **B. Un hub que salta por SSH**: un solo server que hace
+  `pty.spawn('ssh', [host, 'tmux', ...])` hacia los demás. Pros: una sola
+  instalación. Contras: depende de que el hub esté encendido, claves SSH.
+
+Requisitos de un host conectable: accesible en el tailnet + tmux instalado
+(+ sshd si enfoque B).
+
+- [ ] Selector de host en la UI (pantalla previa o menú en la waybar),
+      con estado online/offline de cada uno (ping a su `/api/health`).
+- [ ] Token/login por host (enfoque A) y persistencia en localStorage.
+- [ ] **Varias sesiones a la vez**: añadir la dimensión host al pager —
+      workspaces de la waybar agrupados por host, deslizar entre terminales
+      de máquinas distintas sin desconectar las demás.
+- [ ] Soporte macOS del server (launchd plist en `deploy/`).
+
+## Fase 6 — Adopción: que cualquiera lo use desde GitHub
+
+Objetivo: alguien encuentra el repo, lo clona y en minutos lo tiene corriendo
+en sus dispositivos, sin conocer tmux ni systemd ni Tailscale a fondo.
+
+- [ ] **Instalador de un comando**: `pnpm run setup` (o script `install.sh`)
+      que pregunta lo mínimo (contraseña, puerto, nombre de sesión), instala
+      dependencias, hace el build, detecta el SO e instala el servicio
+      (systemd en Linux, launchd en macOS) y comprueba/guía tmux y Tailscale.
+- [ ] **Desacoplar lo personal**: nada hardcodeado del setup propio; todo en
+      `config.json` con valores por defecto sensatos y `config.example.json`.
+- [ ] **README en inglés** orientado a usuarios (el actual pasa a docs de
+      desarrollo o sección en español): qué es, capturas/GIF, quickstart de
+      3 pasos, requisitos claros (Node, tmux, Tailscale opcional pero
+      recomendado para iOS).
+- [ ] **Guía sin Tailscale**: documentar alternativas (LAN local con
+      certificado autofirmado no vale para PWA en iOS — explicar por qué y
+      qué opciones hay: Tailscale, propio dominio + reverse proxy…).
+- [ ] **Revisión de seguridad antes de publicitar el repo**: repasar el server
+      con ojos de atacante (es software que expone shells remotos): superficie
+      de la API y del WS, manejo de tokens y tickets, inyección vía argumentos
+      de tmux, dependencias, y qué pasa si alguien lo expone a internet sin
+      Tailscale por error (¿warning en el arranque?).
+- [ ] Licencia (MIT probablemente), CONTRIBUTING básico y plantilla de issues.
+- [ ] Releases con tags y changelog; quizá publicar en AUR más adelante.
+
+## Ideas sueltas (sin fase)
+
+- [ ] Login con Face ID (WebAuthn/passkey) en vez de contraseña.
+- [ ] Notificación push cuando termina un comando largo (web push + hook de tmux).
+- [ ] Snippets/macros: comandos frecuentes en la KeyBar (long-press → lista).
+- [ ] Wake-on-LAN desde otro host del tailnet para despertar el PC apagado.
+- [ ] Subir/bajar archivos pequeños (fotos del carrete → host, logs → iPhone).
+
+---
+
+Las casillas se van marcando al completar cada punto; si una mejora se descarta,
+anotar el porqué en lugar de borrarla.

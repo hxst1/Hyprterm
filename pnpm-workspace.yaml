@@ -1,0 +1,7 @@
+packages:
+  - server
+  - app
+
+allowBuilds:
+  esbuild: true
+  node-pty: true
