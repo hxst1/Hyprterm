@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, getToken, clearToken } from './api.js'
+import { activeHost, activeHostId, subscribe, setLocalName, LOCAL_ID } from './hosts.js'
 import Offline from './components/Offline.jsx'
 import Login from './components/Login.jsx'
 import Desktop from './components/Desktop.jsx'
@@ -18,12 +19,15 @@ function reloadIfNewBuild(build) {
 // checking → offline | login | desktop
 export default function App() {
   const [state, setState] = useState('checking')
+  const [hostId, setHostId] = useState(activeHostId())
 
   const check = useCallback(async () => {
     setState('checking')
     try {
       const health = await api('/api/health', { timeoutMs: 4000 })
       if (reloadIfNewBuild(health?.build)) return
+      // afina el nombre del host local con su hostname real
+      if (activeHostId() === LOCAL_ID && health?.host) setLocalName(health.host)
     } catch {
       setState('offline')
       return
@@ -42,6 +46,17 @@ export default function App() {
   }, [])
 
   useEffect(() => { check() }, [check])
+
+  // cambiar de host activo: remonta todo el flujo contra el nuevo host.
+  // Solo reacciona si cambia el host ACTIVO, no ante cualquier edición del
+  // registro (añadir/quitar un host no debe reiniciar la sesión actual).
+  useEffect(() => subscribe(() => {
+    setHostId(prev => {
+      const id = activeHostId()
+      if (id !== prev) check()
+      return id
+    })
+  }), [check])
 
   // al volver del background, comprueba si hay un build nuevo desplegado
   useEffect(() => {
@@ -66,12 +81,12 @@ export default function App() {
       <div className="shell">
         <div className="statescreen">
           <div className="glyph">⏻</div>
-          <p>comprobando si tu pc está despierto…</p>
+          <p>comprobando si {activeHost().name} está despierto…</p>
         </div>
       </div>
     )
   }
-  if (state === 'offline') return <Offline onRetry={check} />
-  if (state === 'login') return <Login onSuccess={() => setState('desktop')} />
-  return <Desktop onAuthLost={logout} />
+  if (state === 'offline') return <Offline onRetry={check} host={activeHost()} />
+  if (state === 'login') return <Login key={hostId} host={activeHost()} onSuccess={() => setState('desktop')} />
+  return <Desktop key={hostId} onAuthLost={logout} />
 }

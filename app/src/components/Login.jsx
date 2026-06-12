@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { api, setToken } from '../api.js'
+import { hosts, activeHostId, setActiveHost } from '../hosts.js'
 
-export default function Login({ onSuccess }) {
+export default function Login({ onSuccess, host }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -35,7 +36,10 @@ export default function Login({ onSuccess }) {
     <div className="shell">
       <div className="statescreen">
         <h1>hyprterm</h1>
-        <p>tu pc está despierto. identifícate.</p>
+        <p>
+          {host ? <><b style={{ color: host.color }}>{host.name}</b> está despierto. </> : 'tu pc está despierto. '}
+          identifícate.
+        </p>
         <form className={`fakeprompt ${error ? 'error' : ''}`} onSubmit={submit}>
           <span className="ps1">❯</span>
           <input
@@ -50,6 +54,19 @@ export default function Login({ onSuccess }) {
           />
         </form>
         <div className="errmsg">{error}</div>
+        {hosts().length > 1 && (
+          <div className="host-switch">
+            {hosts().map(h => (
+              <button
+                key={h.id}
+                className={`ws-chip ${h.id === activeHostId() ? 'active' : ''}`}
+                onClick={() => setActiveHost(h.id)}
+              >
+                {h.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-export default function Offline({ onRetry }) {
+export default function Offline({ onRetry, host }) {
   const [count, setCount] = useState(8)
 
   useEffect(() => {
@@ -12,13 +12,14 @@ export default function Offline({ onRetry }) {
     return () => clearTimeout(t)
   }, [count, onRetry])
 
+  const name = host?.name ?? 'tu pc'
   return (
     <div className="shell">
       <div className="statescreen">
         <div className="glyph">󰍃 ⏻</div>
-        <h1>pc offline</h1>
+        <h1>{name} offline</h1>
         <p>
-          no llego a tu arch. ¿está encendido?<br />
+          no llego a {name}. ¿está encendido?<br />
           ¿tailscale activo en el iphone?
         </p>
         <button className="btn" onClick={onRetry}>reintentar ({count})</button>

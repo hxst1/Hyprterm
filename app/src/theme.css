@@ -282,6 +282,55 @@ body {
   background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
 }
 .theme-row.lock { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--surface0)); }
+.theme-row.add-host { color: var(--good); justify-content: center; }
+.theme-row.host { padding: 0; gap: 0; }
+.theme-row.host .host-pick {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+.theme-row.host .close-x {
+  color: var(--bad);
+  font-weight: 700;
+  padding: 10px 14px;
+}
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.theme-row .badge {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.host-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.host-form input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px; /* evita el zoom de iOS */
+}
+.btn.ghost { background: transparent; color: var(--subtext); }
+.host-switch { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 320px; }
 .theme-row .swatches { display: flex; gap: 4px; margin-left: auto; }
 .theme-row .swatches i {
   width: 14px;
