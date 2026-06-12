@@ -8,13 +8,13 @@ test('sin Origin no devuelve cabeceras CORS', () => {
 })
 
 test('refleja el Origin de la petición', () => {
-  const h = corsHeaders('https://arch.taild6a6a7.ts.net')
-  assert.equal(h['Access-Control-Allow-Origin'], 'https://arch.taild6a6a7.ts.net')
+  const h = corsHeaders('https://arch.example.ts.net')
+  assert.equal(h['Access-Control-Allow-Origin'], 'https://arch.example.ts.net')
   assert.equal(h['Vary'], 'Origin')
 })
 
 test('permite los métodos y cabeceras que usa la app', () => {
-  const h = corsHeaders('https://mac.taild6a6a7.ts.net')
+  const h = corsHeaders('https://mac.example.ts.net')
   for (const m of ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS']) {
     assert.ok(h['Access-Control-Allow-Methods'].includes(m), `falta ${m}`)
   }

@@ -6,6 +6,7 @@
     "build": "pnpm --filter hyprterm-app build",
     "start": "pnpm --filter hyprterm-server start",
     "setpass": "pnpm --filter hyprterm-server setpass",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "setup": "bash setup.sh"
   }
 }

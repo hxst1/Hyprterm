@@ -12,7 +12,10 @@ if (!password || password.length < 8) {
 const existing = existsSync(CONFIG_PATH) ? JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) : {}
 const salt = randomBytes(16).toString('base64')
 
+// Parte de la config existente (preserva port/session/bind/startDir/… que
+// pudiera haber escrito el instalador) y solo (re)genera los campos de auth.
 const cfg = {
+  ...existing,
   port: existing.port ?? 7705,
   session: existing.session ?? 'mobile',
   shell: existing.shell ?? null,
@@ -21,6 +24,7 @@ const cfg = {
   secret: existing.secret ?? randomBytes(32).toString('base64'),
   tokenTtlMs: existing.tokenTtlMs ?? 1000 * 60 * 60 * 12
 }
+delete cfg._comment // por si se partió de config.example.json
 
 writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 })
 console.log(`Contraseña guardada en ${CONFIG_PATH}`)

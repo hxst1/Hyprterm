@@ -3,7 +3,7 @@
   hyprterm-server en macOS (LaunchAgent de usuario).
 
   Instalar:
-    1. Sustituye __HOME__ por tu home (p. ej. /Users/eya):
+    1. Sustituye __HOME__ por tu home (p. ej. /Users/tu-usuario):
          sed -i '' "s#__HOME__#$HOME#g" ~/hyprterm/deploy/com.hyprterm.server.plist
     2. cp ~/hyprterm/deploy/com.hyprterm.server.plist ~/Library/LaunchAgents/
     3. launchctl load -w ~/Library/LaunchAgents/com.hyprterm.server.plist

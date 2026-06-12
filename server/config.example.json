@@ -1,0 +1,10 @@
+{
+  "port": 7705,
+  "bind": "127.0.0.1",
+  "session": "mobile",
+  "shell": null,
+  "startDir": null,
+  "tokenTtlMs": 43200000,
+
+  "_comment": "Plantilla de config. El config.json real lo genera `pnpm setpass` (añade passwordHash, salt y secret) y está en .gitignore. Campos: port = puerto de escucha; bind = interfaz ('127.0.0.1' solo loopback —recomendado con tailscale serve—, '0.0.0.0' expone a la red); session = nombre de la sesión tmux; shell = binario de shell (null = el de tu sistema); startDir = directorio donde nacen las ventanas (null = tu home); tokenTtlMs = vida del token de sesión (12 h por defecto)."
+}
