@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
-import { readdir, readFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 
 import { loadConfig } from './config.js'
 import { verifyPassword, signToken, verifyToken, loginThrottle, recordLogin } from './auth.js'
@@ -183,6 +183,28 @@ app.get('/api/wallpaper', requireAuth, (_req, res) => {
     if (err && !res.headersSent) res.status(500).end()
   })
 })
+
+// Imagen pegada desde el portapapeles del cliente: la terminal solo acepta
+// texto, así que se guarda en disco y se devuelve la ruta para pegarla.
+const PASTE_TYPES = {
+  'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif'
+}
+
+app.post('/api/paste-image', requireAuth,
+  express.raw({ type: Object.keys(PASTE_TYPES), limit: '25mb' }),
+  async (req, res) => {
+    const ext = PASTE_TYPES[req.headers['content-type']]
+    if (!ext || !Buffer.isBuffer(req.body) || req.body.length === 0) {
+      res.status(400).json({ error: 'bad_image' })
+      return
+    }
+    await mkdir(cfg.uploadsDir, { recursive: true })
+    // nombre con fecha legible + sufijo aleatorio contra colisiones
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-')
+    const file = join(cfg.uploadsDir, `pegado-${stamp}-${randomBytes(3).toString('hex')}${ext}`)
+    await writeFile(file, req.body)
+    res.json({ path: file })
+  })
 
 // --- Frontend estático (build de la PWA) ---
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')

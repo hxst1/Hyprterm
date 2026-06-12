@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, controlWsUrl } from '../api.js'
+import { api, controlWsUrl, uploadPasteImage } from '../api.js'
 import Waybar from './Waybar.jsx'
 import TermView from './TermView.jsx'
 import KeyBar from './KeyBar.jsx'
@@ -139,13 +139,33 @@ export default function Desktop({ onAuthLost }) {
   }
 
   async function pasteClipboard() {
-    const win = windows[activeIdx]
-    if (!win) return
+    const term = termsRef.current.get(windows[activeIdx]?.id)
+    if (!term) return
     try {
+      // clipboard.read() ve también imágenes (foto copiada en WhatsApp, captura…);
+      // una terminal solo acepta texto, así que la imagen se sube al host y se
+      // pega la ruta del archivo guardado
+      if (navigator.clipboard.read) {
+        for (const item of await navigator.clipboard.read()) {
+          const imgType = item.types.find(t => t.startsWith('image/'))
+          if (imgType) {
+            term.paste(await uploadPasteImage(await item.getType(imgType)))
+            return
+          }
+          if (item.types.includes('text/plain')) {
+            const text = await (await item.getType('text/plain')).text()
+            if (text) term.paste(text)
+            return
+          }
+        }
+        return
+      }
+      // navegadores sin clipboard.read(): solo texto
       const text = await navigator.clipboard.readText()
-      if (text) termsRef.current.get(win.id)?.paste(text)
-    } catch {
-      // permiso denegado o portapapeles vacío: nada que pegar
+      if (text) term.paste(text)
+    } catch (err) {
+      if (err?.status === 401) onAuthLost()
+      // permiso denegado, portapapeles vacío o subida fallida: nada que pegar
     }
   }
 

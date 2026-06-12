@@ -25,6 +25,8 @@ export function loadConfig() {
     // ruta a una imagen de fondo opcional (p. ej. tu wallpaper de Hyprland);
     // la sirve GET /api/wallpaper y la PWA puede usarla de fondo
     wallpaper: cfg.wallpaper ?? null,
+    // dónde se guardan las imágenes pegadas desde el portapapeles del móvil
+    uploadsDir: cfg.uploadsDir ?? join(homedir(), 'hyprterm-uploads'),
     passwordHash: cfg.passwordHash,
     salt: cfg.salt,
     secret: cfg.secret,

@@ -74,6 +74,23 @@ export async function wallpaperObjectUrl() {
   }
 }
 
+// Sube una imagen del portapapeles al host activo; devuelve la ruta donde
+// quedó guardada (para pegarla en la terminal).
+export async function uploadPasteImage(blob) {
+  const headers = { 'Content-Type': blob.type }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(hostBase() + '/api/paste-image', {
+    method: 'POST',
+    headers,
+    body: blob,
+    signal: AbortSignal.timeout(30000)
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new ApiError(res.status, data)
+  return data.path
+}
+
 // Renueva el token del host activo cuando le queda <25 % de vida.
 // Single-flight: nunca dos renovaciones a la vez.
 let refreshing = null
