@@ -49,11 +49,13 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
     term.open(holderRef.current)
     // renderer WebGL si la GPU lo permite; si no, se queda el DOM renderer
     let webgl = null
-    try {
-      webgl = new WebglAddon()
-      webgl.onContextLoss(() => webgl.dispose())
-      term.loadAddon(webgl)
-    } catch { /* sin WebGL */ }
+    if (!location.search.includes('nowebgl')) {
+      try {
+        webgl = new WebglAddon()
+        webgl.onContextLoss(() => webgl.dispose())
+        term.loadAddon(webgl)
+      } catch { /* sin WebGL */ }
+    }
     fit.fit()
 
     let ws = null

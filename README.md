@@ -1,126 +1,115 @@
 # hyprterm
 
-Terminal remota de tu Arch Linux desde el iPhone, con estética Hyprland/Catppuccin.
-PWA gratuita — sin App Store, sin cuenta de Apple Developer.
+Your computer's terminal on your phone — a self-hosted PWA over tmux, with a
+Hyprland-inspired look. No App Store, no Apple Developer account, no cloud.
 
 ```
-iPhone (PWA) ──wss──► Tailscale ──► Arch: hyprterm-server ──► tmux (sesión "mobile")
+iPhone (installed PWA) ──wss──► Tailscale ──► your machine: hyprterm-server ──► tmux
 ```
 
-- **Persistente**: las ventanas son ventanas de tmux; sobreviven a desconexiones.
-- **Multi-ventana**: desliza entre terminales, créalas con `+`, ciérralas con `✕`.
-- **Multi-host**: añade otras máquinas del tailnet (cada una con su hyprterm-server)
-  y cambia entre ellas desde ajustes; cada host con su propia contraseña.
-- **Temas**: presets (Sakura, Catppuccin, Gruvbox, Nord, Tokyo Night) + temas propios.
-- **Waybar** propia con workspaces, cpu, mem, batería y reloj (respeta la isla del iPhone).
-- **Barra de teclas**: esc, tab, ctrl/alt pegajosos, flechas, símbolos, pegar.
-- **Seguridad**: solo accesible dentro de tu Tailnet + contraseña (scrypt) + token con caducidad.
+![hyprterm running on a phone-sized viewport](docs/screenshot.png)
 
-> Mejoras planificadas: ver [ROADMAP.md](ROADMAP.md).
+- **Persistent** — windows are tmux windows; they survive disconnects and reboots
+  of the *phone*. Lock the app and your shells keep running.
+- **Multi-window** — swipe between terminals, create with `+`, close with `✕`,
+  rename with a long-press.
+- **Multi-host** — add other machines on your tailnet (each runs its own
+  hyprterm-server) and switch between them from settings; each with its own password.
+- **Themes** — Sakura, Catppuccin, Gruvbox, Nord, Tokyo Night, plus your own.
+- **Status bar** — workspaces, CPU, memory, battery and clock (respects the iPhone
+  notch / Dynamic Island).
+- **Key bar** — esc, tab, sticky ctrl/alt/shift, arrows, symbols, paste.
+- **Secure by default** — only reachable inside your tailnet, password hashed with
+  scrypt, short-lived signed tokens, one-time tickets for the WebSocket, and the
+  server binds to loopback unless you opt out.
 
-## Estructura
+> Planned work: see [ROADMAP.md](ROADMAP.md). · Español: [README.es.md](README.es.md).
 
-- `server/` — Node: Express + ws + node-pty. Un pty por conexión, adjuntado a una
-  *sesión agrupada* de tmux (cada vista del móvil puede mirar una ventana distinta).
-- `app/` — PWA: Vite + React + xterm.js. El build (`app/dist`) lo sirve el propio server.
-- `deploy/` — unidad systemd (Linux) y LaunchAgent (macOS).
+## Requirements
 
-## Desarrollo (en cualquier máquina con node + pnpm + tmux)
+- A machine to run the server: **Linux** (systemd) or **macOS** (launchd), with
+  **Node 18+**, **[pnpm](https://pnpm.io)** and **tmux**.
+- **[Tailscale](https://tailscale.com)** (free) for HTTPS access from iOS — see
+  [Without Tailscale](#without-tailscale) for alternatives.
+- An iPhone/iPad (or any browser) as the client.
+
+## Quickstart
 
 ```bash
-pnpm install                   # workspace: server + app
-pnpm setpass <tu-contraseña>
-pnpm start                     # API + WS en :7705
-
-pnpm dev                       # Vite en :5173 con proxy al server
-# o build de producción servido por el server:
-pnpm build                     # → app/dist, accesible en http://localhost:7705
-
-pnpm test                      # tests del server (auth)
+git clone https://github.com/hxst1/Hyprterm ~/hyprterm
+cd ~/hyprterm
+./setup.sh          # asks for a password/port, builds, installs the service
 ```
 
-## Despliegue en Arch
+The installer detects your OS, installs the systemd user service (Linux) or a
+LaunchAgent (macOS), builds the PWA and starts everything. Then expose it over
+HTTPS so iOS will let you install the PWA:
 
 ```bash
-sudo pacman -S --needed nodejs pnpm tmux tailscale
-sudo systemctl enable --now tailscaled
-sudo tailscale up
-
-git clone <este-repo> ~/hyprterm
-cd ~/hyprterm && pnpm install
-pnpm setpass <tu-contraseña>
-pnpm build
-
-mkdir -p ~/.config/systemd/user
-cp ~/hyprterm/deploy/hyprterm.service ~/.config/systemd/user/
-systemctl --user enable --now hyprterm
-loginctl enable-linger $USER    # sigue corriendo aunque no haya sesión abierta
+tailscale serve --bg 7705        # → https://<your-host>.<your-tailnet>.ts.net
 ```
 
-## Despliegue en macOS
+On the iPhone: install the **Tailscale** app and sign in, open the URL above in
+Safari, then **Share → Add to Home Screen**. Done — it behaves like a native app.
 
-Mismo server, distinto gestor de servicios (launchd en vez de systemd):
+> First time with Tailscale? Enable **HTTPS** and **MagicDNS** in the
+> [admin DNS page](https://login.tailscale.com/admin/dns), and run
+> `sudo tailscale set --operator=$USER` once so `tailscale serve` doesn't need sudo.
+
+## Without Tailscale
+
+iOS only lets you *install* a PWA from an origin served over **trusted** HTTPS. A
+self-signed LAN certificate won't do (iOS rejects it for PWA install). Options:
+
+- **Tailscale** (recommended) — free, gives each machine a valid certificate, no
+  port-forwarding, no DNS setup. This is the path the docs assume.
+- **Your own domain + reverse proxy** — point a subdomain at the machine and put
+  Caddy/nginx with a Let's Encrypt cert in front of `localhost:7705`. This usually
+  means exposing a port to the internet; if you do, keep the password strong and
+  consider IP allow-listing.
+- **Cloudflare Tunnel** (with Access) — another zero-trust option that gives you a
+  trusted HTTPS hostname without opening ports.
+- **Desktop browsers** don't need any of this: just open `http://<host>:7705`
+  directly (the HTTPS requirement is specific to installing the iOS PWA).
+
+If you bind the server to a non-loopback address (`"bind": "0.0.0.0"` in
+`server/config.json`), it warns on startup — it exposes shells, so put a firewall
+in front of it.
+
+## Manual install
+
+If you'd rather not use the installer:
 
 ```bash
-brew install node pnpm tmux
-brew install --cask tailscale   # o la app de la App Store
-
-git clone <este-repo> ~/hyprterm
-cd ~/hyprterm && pnpm install
-pnpm setpass <tu-contraseña>
-pnpm build
-
-# sustituye __HOME__ por tu home y carga el LaunchAgent
-sed -i '' "s#__HOME__#$HOME#g" ~/hyprterm/deploy/com.hyprterm.server.plist
-cp ~/hyprterm/deploy/com.hyprterm.server.plist ~/Library/LaunchAgents/
-launchctl load -w ~/Library/LaunchAgents/com.hyprterm.server.plist
+pnpm install                 # workspace: server + app
+pnpm setpass <password>      # writes server/config.json (gitignored)
+pnpm build                   # builds the PWA into app/dist
+pnpm start                   # or install the service from deploy/
 ```
 
-Luego expón el puerto con `tailscale serve --bg 7705` igual que en Linux. Los logs
-van a `~/Library/Logs/hyprterm.log`.
+Service templates live in `deploy/` (`hyprterm.service` for systemd,
+`com.hyprterm.server.plist` for launchd).
 
-## Multi-host: varias máquinas
+## Multi-host
 
-Cada máquina corre su propio `hyprterm-server` (es autónomo, no hay un "hub").
-En la PWA, ve a **ajustes (⚙) → hosts → + añadir host** e introduce la URL de la
-otra máquina (p. ej. `mac.tu-tailnet.ts.net`). La lista muestra el estado
-online/offline de cada host (ping a `/api/health`) y tocas uno para cambiarte;
-cada host tiene su propia contraseña y su propio login.
+Each machine runs its own autonomous `hyprterm-server` — there's no central hub.
+In the app, go to **settings (⚙) → hosts → + add host** and enter the other
+machine's URL (e.g. `mac.your-tailnet.ts.net`). The list shows each host's
+online/offline status and you tap to switch; every host has its own password and
+login. The installed PWA stays on one origin and talks to the others via CORS.
 
-La PWA instalada vive en un único origen (el host que la sirvió), así que habla
-con los demás por CORS — el server refleja el `Origin` de la petición. No hay
-saltos SSH ni claves que gestionar: cada host es independiente.
+## Configuration
 
-### HTTPS con Tailscale (necesario para instalar la PWA en iOS)
+`server/config.json` (created by `setpass`, gitignored). See
+`server/config.example.json` for all fields: `port`, `bind`, tmux `session`,
+`shell`, `startDir` (where new windows open), and `tokenTtlMs`. Custom themes go in
+`~/.config/hyprterm/themes/*.json`.
 
-iOS solo permite instalar PWAs servidas por HTTPS. Tailscale te da un certificado
-válido para tu máquina sin tocar DNS ni abrir puertos:
+## Development & contributing
 
-```bash
-sudo tailscale set --operator=$USER     # una vez, para no necesitar sudo
-tailscale serve --bg 7705               # proxy https://tu-pc.tu-tailnet.ts.net → localhost:7705
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, tests (`pnpm test`) and
+architecture notes.
 
-(Activa antes HTTPS y MagicDNS en https://login.tailscale.com/admin/dns si no lo están.)
+## License
 
-### En el iPhone
-
-1. Instala la app **Tailscale** del App Store y entra con tu cuenta. Actívala.
-2. Abre en Safari `https://tu-pc.tu-tailnet.ts.net`.
-3. Compartir → **Añadir a pantalla de inicio**. Ya tienes la "app".
-
-## Personalizar la estética
-
-- Colores: variables CSS en `app/src/theme.css` (por defecto Catppuccin Mocha) y
-  el tema de xterm en `app/src/components/TermView.jsx`.
-- Fondo: el gradiente "wallpaper" está en `.shell` dentro de `theme.css`.
-- Shell por defecto de las ventanas nuevas: campo `shell` en `server/config.json`.
-
-## Notas
-
-- La sesión tmux se llama `mobile` (configurable). También puedes entrar a ella
-  desde el PC: `tmux attach -t mobile` — verás lo mismo que en el móvil.
-- El endpoint `/api/health` es público (solo dice "estoy vivo"); todo lo demás
-  requiere token. Los intentos de login fallidos tienen backoff exponencial.
-- Si quieres encender el PC en remoto, mira Wake-on-LAN con otro dispositivo
-  siempre encendido en tu LAN (router o una Pi).
+MIT — see [LICENSE](LICENSE).
