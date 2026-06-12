@@ -8,11 +8,12 @@ async function tmux(...args) {
   return stdout.trimEnd()
 }
 
-export async function ensureSession(session, shell) {
+export async function ensureSession(session, shell, startDir) {
   try {
     await tmux('has-session', '-t', `=${session}`)
   } catch {
     const args = ['new-session', '-d', '-s', session]
+    if (startDir) args.push('-c', startDir)
     if (shell) args.push(shell)
     await tmux(...args)
   }
@@ -31,9 +32,10 @@ export async function listWindows(session) {
   })
 }
 
-export async function newWindow(session, name, shell) {
+export async function newWindow(session, name, shell, startDir) {
   const args = ['new-window', '-t', `=${session}`, '-P', '-F', '#{window_id}']
   if (name) args.splice(1, 0, '-n', name)
+  if (startDir) args.push('-c', startDir)
   if (shell) args.push(shell)
   const id = await tmux(...args)
   return id

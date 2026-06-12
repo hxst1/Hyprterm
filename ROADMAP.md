@@ -178,6 +178,16 @@ en sus dispositivos, sin conocer tmux ni systemd ni Tailscale a fondo.
 - [ ] Licencia (MIT probablemente), CONTRIBUTING básico y plantilla de issues.
 - [ ] Releases con tags y changelog; quizá publicar en AUR más adelante.
 
+## Hecho fuera de fase
+
+- [x] **Ventanas nuevas en el home, no en el cwd del servicio** *(2026-06-12:
+      `startDir` en config (default `os.homedir()`), pasado como `-c` a
+      `new-session`/`new-window`)*.
+- [x] **Bloqueo estilo hyprlock** *(2026-06-12: botón "bloquear" en ajustes que
+      limpia el token y vuelve al login; las ventanas viven en la sesión tmux
+      `mobile`, independientes del token, así que reaparecen al volver a
+      entrar. Verificado: bloquear → login → re-login → 2 ventanas intactas)*.
+
 ## Ideas sueltas (sin fase)
 
 - [ ] Login con Face ID (WebAuthn/passkey) en vez de contraseña.

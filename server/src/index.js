@@ -85,13 +85,13 @@ function consumeWsTicket(ticket) {
 }
 
 app.get('/api/windows', requireAuth, async (_req, res) => {
-  await tmux.ensureSession(cfg.session, cfg.shell)
+  await tmux.ensureSession(cfg.session, cfg.shell, cfg.startDir)
   res.json(await tmux.listWindows(cfg.session))
 })
 
 app.post('/api/windows', requireAuth, async (req, res) => {
-  await tmux.ensureSession(cfg.session, cfg.shell)
-  const id = await tmux.newWindow(cfg.session, req.body?.name, cfg.shell)
+  await tmux.ensureSession(cfg.session, cfg.shell, cfg.startDir)
+  const id = await tmux.newWindow(cfg.session, req.body?.name, cfg.shell, cfg.startDir)
   res.json(await tmux.listWindows(cfg.session).then(ws => ws.find(w => w.id === id)))
   broadcastWindows()
 })
@@ -192,7 +192,7 @@ function controlSend(payload) {
 async function broadcastWindows(force = false) {
   if (controlWss.clients.size === 0) return
   try {
-    await tmux.ensureSession(cfg.session, cfg.shell)
+    await tmux.ensureSession(cfg.session, cfg.shell, cfg.startDir)
     const windows = await tmux.listWindows(cfg.session)
     const json = JSON.stringify(windows)
     if (force || json !== lastWindowsJson) {
@@ -219,7 +219,7 @@ controlWss.on('connection', async (ws, req) => {
   }
   // estado inicial inmediato para este cliente
   try {
-    await tmux.ensureSession(cfg.session, cfg.shell)
+    await tmux.ensureSession(cfg.session, cfg.shell, cfg.startDir)
     const windows = await tmux.listWindows(cfg.session)
     lastWindowsJson = JSON.stringify(windows)
     ws.send(JSON.stringify({ type: 'windows', windows }))
@@ -260,7 +260,7 @@ wss.on('connection', async (ws, req) => {
 
   let term
   try {
-    await tmux.ensureSession(cfg.session, cfg.shell)
+    await tmux.ensureSession(cfg.session, cfg.shell, cfg.startDir)
     await tmux.prepareView(cfg.session, viewName, windowId)
     term = pty.spawn('tmux', ['attach-session', '-t', `=${viewName}`], {
       name: 'xterm-256color',

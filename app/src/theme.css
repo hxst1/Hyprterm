@@ -281,6 +281,7 @@ body {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
 }
+.theme-row.lock { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--surface0)); }
 .theme-row .swatches { display: flex; gap: 4px; margin-left: auto; }
 .theme-row .swatches i {
   width: 14px;

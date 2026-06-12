@@ -218,7 +218,12 @@ export default function Desktop({ onAuthLost }) {
         onSendKey={sendKey}
         onPaste={pasteClipboard}
       />
-      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsSheet
+          onClose={() => setSettingsOpen(false)}
+          onLock={onAuthLost}
+        />
+      )}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import {
   fontSize, setFontSize, FONT_MIN, FONT_MAX, subscribe
 } from '../prefs.js'
 
-export default function SettingsSheet({ onClose }) {
+export default function SettingsSheet({ onClose, onLock }) {
   const [, force] = useState(0)
   useEffect(() => subscribe(() => force(n => n + 1)), [])
 
@@ -66,6 +66,14 @@ export default function SettingsSheet({ onClose }) {
         <p className="hint">
           también puedes dejar archivos .json en ~/.config/hyprterm/themes/ del host
           y aparecerán en la lista al recargar.
+        </p>
+
+        <h3>sesión</h3>
+        <button className="theme-row lock" onClick={onLock}>
+          <span>🔒 bloquear (cerrar sesión)</span>
+        </button>
+        <p className="hint">
+          pedirá la contraseña de nuevo; tus terminales siguen abiertas en tmux.
         </p>
       </div>
     </>
