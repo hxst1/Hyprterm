@@ -110,6 +110,10 @@ login. The installed PWA stays on one origin and talks to the others via CORS.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, tests (`pnpm test`) and
 architecture notes.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

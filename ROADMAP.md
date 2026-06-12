@@ -181,7 +181,9 @@ en sus dispositivos, sin conocer tmux ni systemd ni Tailscale a fondo.
       Auth ya era sólida (scrypt, tokens HMAC timing-safe, tickets de un solo
       uso). `server/src/validate.js` + tests)*.
 - [x] Licencia MIT, CONTRIBUTING y plantillas de issues *(2026-06-12)*.
-- [ ] Releases con tags y changelog; quizá publicar en AUR más adelante.
+- [x] Releases con tags y changelog *(2026-06-12: `CHANGELOG.md` (Keep a
+      Changelog) y tag anotado `v0.1.0`)*. Pendiente opcional: crear la Release
+      en la web de GitHub (requiere `gh auth login`) y publicar en AUR.
 
 ## Hecho fuera de fase
 
