@@ -7,7 +7,7 @@ import KeyBar from './KeyBar.jsx'
 export default function Desktop({ onAuthLost }) {
   const [windows, setWindows] = useState([])
   const [activeIdx, setActiveIdx] = useState(0)
-  const [mods, setMods] = useState({ ctrl: false, alt: false })
+  const [mods, setMods] = useState({ ctrl: false, alt: false, shift: false })
 
   const pagerRef = useRef(null)
   const termsRef = useRef(new Map())
@@ -80,20 +80,32 @@ export default function Desktop({ onAuthLost }) {
     else termsRef.current.delete(id)
   }, [])
 
-  const consumeMods = useCallback(() => setMods({ ctrl: false, alt: false }), [])
+  const consumeMods = useCallback(() => setMods({ ctrl: false, alt: false, shift: false }), [])
 
   function sendKey(seq) {
     const win = windows[activeIdx]
     if (!win) return
     let out = seq
-    // mods pegajosos también para teclas de la barra (alt+tecla, ctrl+letra)
-    if ((mods.ctrl || mods.alt) && seq.length === 1) {
-      if (mods.ctrl) {
-        const c = seq.toUpperCase().charCodeAt(0)
-        if (c >= 63 && c <= 95) out = String.fromCharCode(c & 0x1f)
+    // mods pegajosos también para teclas de la barra (shift+flecha, alt+tecla, ctrl+letra…)
+    if (mods.ctrl || mods.alt || mods.shift) {
+      const arrow = /^\x1b\[([ABCD])$/.exec(seq)
+      if (arrow) {
+        // CSI 1;N X — N codifica shift(+1), alt(+2) y ctrl(+4)
+        const n = 1 + (mods.shift ? 1 : 0) + (mods.alt ? 2 : 0) + (mods.ctrl ? 4 : 0)
+        out = `\x1b[1;${n}${arrow[1]}`
+        consumeMods()
+      } else if (seq === '\t' && mods.shift) {
+        out = '\x1b[Z'
+        consumeMods()
+      } else if (seq.length === 1) {
+        if (mods.shift) out = out.toUpperCase()
+        if (mods.ctrl) {
+          const c = out.toUpperCase().charCodeAt(0)
+          if (c >= 63 && c <= 95) out = String.fromCharCode(c & 0x1f)
+        }
+        if (mods.alt) out = '\x1b' + out
+        consumeMods()
       }
-      if (mods.alt) out = '\x1b' + out
-      consumeMods()
     }
     termsRef.current.get(win.id)?.send(out)
   }

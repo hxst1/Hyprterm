@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'hyprterm_token'
 const EXP_KEY = 'hyprterm_token_exp'
+const TTL_KEY = 'hyprterm_token_ttl'
 
 export function getToken() {
   const exp = Number(localStorage.getItem(EXP_KEY) ?? 0)
@@ -10,11 +11,27 @@ export function getToken() {
 export function setToken(token, ttlMs) {
   localStorage.setItem(TOKEN_KEY, token)
   localStorage.setItem(EXP_KEY, String(Date.now() + ttlMs))
+  localStorage.setItem(TTL_KEY, String(ttlMs))
 }
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(EXP_KEY)
+  localStorage.removeItem(TTL_KEY)
+}
+
+// Renueva el token cuando le queda <25 % de vida, así la sesión no caduca
+// mientras se usa. Single-flight: nunca hay dos renovaciones en vuelo.
+let refreshing = null
+
+function maybeRefresh() {
+  const exp = Number(localStorage.getItem(EXP_KEY) ?? 0)
+  const ttl = Number(localStorage.getItem(TTL_KEY) ?? 0)
+  if (!exp || !ttl || exp - Date.now() > ttl * 0.25) return
+  refreshing ??= api('/api/refresh', { method: 'POST' })
+    .then(d => setToken(d.token, d.ttlMs))
+    .catch(() => {})
+    .finally(() => { refreshing = null })
 }
 
 export class ApiError extends Error {
@@ -39,14 +56,18 @@ export async function api(path, { method = 'GET', body, timeoutMs = 6000 } = {})
   })
   const data = await res.json().catch(() => null)
   if (!res.ok) throw new ApiError(res.status, data)
+  if (path !== '/api/refresh') maybeRefresh()
   return data
 }
 
-export function termWsUrl(windowIndex, cols, rows) {
+// El WS se abre con un ticket de un solo uso en vez del token,
+// para que el token no acabe en logs de proxies vía query string.
+export async function termWsUrl(windowId, cols, rows) {
+  const { ticket } = await api('/api/ws-ticket', { method: 'POST' })
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   const params = new URLSearchParams({
-    token: getToken() ?? '',
-    window: String(windowIndex),
+    ticket,
+    window: String(windowId),
     cols: String(cols),
     rows: String(rows)
   })
