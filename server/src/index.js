@@ -12,6 +12,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { loadConfig } from './config.js'
 import { verifyPassword, signToken, verifyToken, loginThrottle, recordLogin } from './auth.js'
 import { corsHeaders } from './cors.js'
+import { isWindowId, sanitizeWindowName, clampDim } from './validate.js'
 import * as tmux from './tmux.js'
 import { getStats } from './stats.js'
 
@@ -104,20 +105,25 @@ app.get('/api/windows', requireAuth, async (_req, res) => {
 
 app.post('/api/windows', requireAuth, async (req, res) => {
   await tmux.ensureSession(cfg.session, cfg.shell, cfg.startDir)
-  const id = await tmux.newWindow(cfg.session, req.body?.name, cfg.shell, cfg.startDir)
+  const name = sanitizeWindowName(req.body?.name) || null
+  const id = await tmux.newWindow(cfg.session, name, cfg.shell, cfg.startDir)
   res.json(await tmux.listWindows(cfg.session).then(ws => ws.find(w => w.id === id)))
   broadcastWindows()
 })
 
 app.delete('/api/windows/:id', requireAuth, async (req, res) => {
+  if (!isWindowId(req.params.id)) {
+    res.status(400).json({ error: 'bad_request' })
+    return
+  }
   await tmux.killWindow(req.params.id)
   res.json({ ok: true })
   broadcastWindows()
 })
 
 app.patch('/api/windows/:id', requireAuth, async (req, res) => {
-  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : ''
-  if (!/^@\d+$/.test(req.params.id) || !name || name.length > 50) {
+  const name = sanitizeWindowName(req.body?.name)
+  if (!isWindowId(req.params.id) || !name) {
     res.status(400).json({ error: 'bad_request' })
     return
   }
@@ -266,9 +272,9 @@ wss.on('connection', async (ws, req) => {
   // id de ventana de tmux (@N): estable aunque se cierren otras ventanas,
   // al contrario que el índice
   const rawWindow = url.searchParams.get('window')
-  const windowId = /^@\d+$/.test(rawWindow ?? '') ? rawWindow : null
-  const cols = Number(url.searchParams.get('cols')) || 80
-  const rows = Number(url.searchParams.get('rows')) || 24
+  const windowId = isWindowId(rawWindow) ? rawWindow : null
+  const cols = clampDim(url.searchParams.get('cols'), 80)
+  const rows = clampDim(url.searchParams.get('rows'), 24)
   const viewName = `htv_${randomBytes(4).toString('hex')}`
 
   let term
@@ -302,8 +308,8 @@ wss.on('connection', async (ws, req) => {
       const msg = JSON.parse(raw.toString())
       if (msg.type === 'input' && typeof msg.data === 'string') {
         term.write(msg.data)
-      } else if (msg.type === 'resize' && msg.cols > 0 && msg.rows > 0) {
-        term.resize(Math.floor(msg.cols), Math.floor(msg.rows))
+      } else if (msg.type === 'resize') {
+        term.resize(clampDim(msg.cols, cols), clampDim(msg.rows, rows))
       }
     } catch {
       // mensaje malformado: ignorar
@@ -318,6 +324,14 @@ wss.on('connection', async (ws, req) => {
 
 await tmux.cleanupViews()
 
-server.listen(cfg.port, () => {
-  console.log(`hyprterm-server escuchando en http://0.0.0.0:${cfg.port} (sesión tmux: ${cfg.session})`)
+const isLoopback = cfg.bind === '127.0.0.1' || cfg.bind === '::1' || cfg.bind === 'localhost'
+server.listen(cfg.port, cfg.bind, () => {
+  console.log(`hyprterm-server escuchando en http://${cfg.bind}:${cfg.port} (sesión tmux: ${cfg.session})`)
+  if (!isLoopback) {
+    console.warn(
+      `⚠  ATENCIÓN: escuchando en ${cfg.bind} — el server expone shells y es ` +
+      `accesible desde la red, no solo por tailscale. Asegúrate de que hay un ` +
+      `firewall delante. Para escuchar solo en loopback, quita "bind" de config.json.`
+    )
+  }
 })

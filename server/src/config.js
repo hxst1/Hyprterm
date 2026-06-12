@@ -14,6 +14,10 @@ export function loadConfig() {
   const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'))
   return {
     port: cfg.port ?? 7705,
+    // Interfaz de escucha. Por defecto solo loopback: `tailscale serve` proxya
+    // a 127.0.0.1, así que no hace falta exponerse a la LAN. Pon '0.0.0.0'
+    // explícitamente solo si sabes lo que haces (red de confianza sin tailscale).
+    bind: cfg.bind ?? '127.0.0.1',
     session: cfg.session ?? 'mobile',
     shell: cfg.shell ?? null,
     // dónde nacen las ventanas; por defecto el home, no el cwd del servicio
