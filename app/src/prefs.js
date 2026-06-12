@@ -148,7 +148,7 @@ function paintBackground() {
   } else {
     root.setProperty('--bg-image', 'none')
     root.setProperty('--bg-dim', 'transparent')
-    root.setProperty('--term-panel', 'color-mix(in srgb, var(--term-bg) 85%, transparent)')
+    root.setProperty('--term-panel', 'color-mix(in srgb, var(--term-bg) 80%, transparent)')
   }
 }
 

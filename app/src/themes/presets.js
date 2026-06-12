@@ -21,7 +21,7 @@ export const PRESETS = [
       text: '#f0e6e0', subtext: '#b8aec5',
       accent: '#c9a8d4', accent2: '#b388c4', soft: '#d4bce0',
       good: '#a8c9a0', bad: '#d47a9a', warn: '#e8b88a',
-      wallpaper: ['#2b2138', '#241a3d']
+      wallpaper: ['#3d2c54', '#32225e']
     },
     terminal: {
       background: '#1a1622', foreground: '#f0e6e0',

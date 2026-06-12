@@ -30,8 +30,8 @@
   --good: #a8c9a0;
   --bad: #d47a9a;
   --warn: #e8b88a;
-  --wall-a: #2b2138;     /* gradientes del "wallpaper" */
-  --wall-b: #241a3d;
+  --wall-a: #3d2c54;     /* gradientes del "wallpaper" */
+  --wall-b: #32225e;
   --term-bg: #1a1622;    /* fondo del terminal (= theme.terminal.background) */
 
   --font-mono: 'JetBrainsMono Nerd Font Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -52,21 +52,48 @@ html, body, #root {
   touch-action: manipulation;
 }
 
-/* Fondo a pantalla completa en el body (no en .shell): así cubre también los
-   safe areas y la zona que deja el teclado de iOS al encoger el viewport, sin
-   que se vea un color distinto detrás. Capas (de arriba a abajo): oscurecido
-   para legibilidad → imagen de wallpaper (si hay) → gradiente de fallback. */
-body {
+body { background: var(--bg0); }
+
+/* Wallpaper en una capa fixed real a tamaño del viewport GRANDE (100lvh):
+   iOS ignora background-attachment: fixed, así que con el fondo en el body
+   la imagen se quedaba anclada al layout viewport y al abrir el teclado se
+   veían franjas de colores distintos bajo la keybar. Capas (de arriba a
+   abajo): oscurecido para legibilidad → imagen de wallpaper (si hay) →
+   gradiente de fallback. */
+body::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100lvh;
+  z-index: -1;
   background:
     linear-gradient(var(--bg-dim, transparent), var(--bg-dim, transparent)),
     var(--bg-image, none),
-    radial-gradient(120% 90% at 80% -10%, var(--wall-a) 0%, transparent 60%),
-    radial-gradient(100% 80% at 10% 110%, var(--wall-b) 0%, transparent 55%),
+    radial-gradient(130% 100% at 80% -10%, var(--wall-a) 0%, transparent 78%),
+    radial-gradient(120% 95% at 10% 110%, var(--wall-b) 0%, transparent 72%),
     var(--bg0);
   background-size: cover, cover, auto, auto, auto;
   background-position: center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+}
+
+/* Hueco que deja el teclado de iOS bajo la shell (entre el final del visual
+   viewport y el borde físico): se pinta con la MISMA superficie que la keybar
+   para que se vea una sola banda continua, sin escalones de color. Con el
+   teclado cerrado --vvh llega al borde y esta capa queda fuera de pantalla. */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--vvt, 0px) + var(--vvh, 100lvh));
+  height: 100lvh;
+  background: color-mix(in srgb, var(--bg1) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: none;
 }
 
 /* ---------- contenedor raíz que respeta el teclado (visualViewport) ---------- */
