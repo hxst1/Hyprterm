@@ -1,20 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
+import { WebLinksAddon } from '@xterm/addon-web-links'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { termWsUrl } from '../api.js'
-
-const THEME = {
-  background: '#00000000',
-  foreground: '#cdd6f4',
-  cursor: '#f5e0dc',
-  cursorAccent: '#1e1e2e',
-  selectionBackground: '#45475a',
-  black: '#45475a', red: '#f38ba8', green: '#a6e3a1', yellow: '#f9e2af',
-  blue: '#89b4fa', magenta: '#f5c2e7', cyan: '#94e2d5', white: '#bac2de',
-  brightBlack: '#585b70', brightRed: '#f38ba8', brightGreen: '#a6e3a1',
-  brightYellow: '#f9e2af', brightBlue: '#89b4fa', brightMagenta: '#f5c2e7',
-  brightCyan: '#94e2d5', brightWhite: '#a6adc8'
-}
+import { xtermTheme, fontSize, subscribe } from '../prefs.js'
 
 const FONT_FAMILY = "'JetBrainsMono Nerd Font Mono', monospace"
 
@@ -40,23 +31,50 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
 
   useEffect(() => {
     const term = new Terminal({
-      theme: THEME,
+      theme: xtermTheme(),
       // arranca con la fuente del sistema; al cargar la Nerd Font se cambia y re-mide
       fontFamily: 'monospace',
-      fontSize: 13,
+      fontSize: fontSize(),
       cursorBlink: true,
       scrollback: 5000,
-      allowTransparency: true
+      allowProposedApi: true // lo exige addon-unicode11
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
+    // anchos correctos de glifos Nerd Font / emoji
+    term.loadAddon(new Unicode11Addon())
+    term.unicode.activeVersion = '11'
+    // URLs tappables (target _blank)
+    term.loadAddon(new WebLinksAddon((_e, uri) => window.open(uri, '_blank')))
     term.open(holderRef.current)
+    // renderer WebGL si la GPU lo permite; si no, se queda el DOM renderer
+    try {
+      const webgl = new WebglAddon()
+      webgl.onContextLoss(() => webgl.dispose())
+      term.loadAddon(webgl)
+    } catch { /* sin WebGL */ }
     fit.fit()
 
     let ws = null
     let closed = false
     let retry = 0
     let retryTimer = null
+
+    function doFit() {
+      fit.fit()
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+      }
+    }
+
+    // tema y tamaño de fuente reactivos desde ajustes
+    const unsubscribePrefs = subscribe(() => {
+      term.options.theme = xtermTheme()
+      if (term.options.fontSize !== fontSize()) {
+        term.options.fontSize = fontSize()
+        doFit()
+      }
+    })
 
     document.fonts.load(`13px 'JetBrainsMono Nerd Font Mono'`).then(() => {
       if (closed) return
@@ -138,19 +156,20 @@ export default function TermView({ win, registerTerm, modsRef, consumeMods, onAu
     holder.addEventListener('touchmove', onTouchMove, { passive: true })
     holder.addEventListener('touchend', onTouchEnd)
 
-    const ro = new ResizeObserver(() => {
-      fit.fit()
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
-      }
-    })
+    const ro = new ResizeObserver(doFit)
     ro.observe(holderRef.current)
 
-    registerTerm(win.id, { send, focus: () => term.focus() })
+    registerTerm(win.id, {
+      send,
+      // term.paste respeta el bracketed paste mode de la app del pane
+      paste: text => term.paste(text),
+      focus: () => term.focus()
+    })
 
     return () => {
       closed = true
       clearTimeout(retryTimer)
+      unsubscribePrefs()
       holder.removeEventListener('touchstart', onTouchStart)
       holder.removeEventListener('touchmove', onTouchMove)
       holder.removeEventListener('touchend', onTouchEnd)

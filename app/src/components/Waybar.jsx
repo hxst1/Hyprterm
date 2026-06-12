@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 
 function useClock() {
@@ -27,10 +27,24 @@ function useStats() {
   return stats
 }
 
-export default function Waybar({ windows, activeIdx, onSelect, onNew, onKill }) {
+export default function Waybar({ windows, activeIdx, onSelect, onNew, onKill, onRename, onSettings }) {
   const clock = useClock()
   const stats = useStats()
   const memPct = stats ? Math.round((stats.mem.used / stats.mem.total) * 100) : null
+
+  // long-press sobre el chip activo = renombrar ventana
+  const lp = useRef({ timer: null, fired: false })
+  function pressStart(w, isActive) {
+    if (!isActive) return
+    lp.current.fired = false
+    lp.current.timer = setTimeout(() => {
+      lp.current.fired = true
+      onRename(w)
+    }, 550)
+  }
+  function pressEnd() {
+    clearTimeout(lp.current.timer)
+  }
 
   return (
     <div className="waybar">
@@ -39,7 +53,15 @@ export default function Waybar({ windows, activeIdx, onSelect, onNew, onKill }) 
           <button
             key={w.id}
             className={`ws-chip ${i === activeIdx ? 'active' : ''}`}
-            onClick={() => (i === activeIdx ? null : onSelect(i))}
+            onClick={() => {
+              if (lp.current.fired) { lp.current.fired = false; return }
+              if (i !== activeIdx) onSelect(i)
+            }}
+            onPointerDown={() => pressStart(w, i === activeIdx)}
+            onPointerUp={pressEnd}
+            onPointerLeave={pressEnd}
+            onPointerCancel={pressEnd}
+            onContextMenu={e => e.preventDefault()}
           >
             <span>{w.index}</span>
             <span style={{ opacity: 0.8 }}>{w.command || w.name}</span>
@@ -64,6 +86,7 @@ export default function Waybar({ windows, activeIdx, onSelect, onNew, onKill }) 
           </span>
         )}
         <span className="mod clock">{clock}</span>
+        <button className="gear" onClick={onSettings} aria-label="ajustes">⚙</button>
       </div>
     </div>
   )

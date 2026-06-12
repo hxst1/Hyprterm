@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import '@xterm/xterm/css/xterm.css'
 import './theme.css'
 import App from './App.jsx'
+import { applyTheme } from './prefs.js'
+
+applyTheme()
 
 // Altura real visible (el teclado de iOS reduce el visualViewport, no el layout)
 function syncViewportHeight() {

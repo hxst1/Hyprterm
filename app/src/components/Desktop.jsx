@@ -3,11 +3,14 @@ import { api } from '../api.js'
 import Waybar from './Waybar.jsx'
 import TermView from './TermView.jsx'
 import KeyBar from './KeyBar.jsx'
+import SettingsSheet from './SettingsSheet.jsx'
+import { loadHostThemes } from '../prefs.js'
 
 export default function Desktop({ onAuthLost }) {
   const [windows, setWindows] = useState([])
   const [activeIdx, setActiveIdx] = useState(0)
   const [mods, setMods] = useState({ ctrl: false, alt: false, shift: false })
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const pagerRef = useRef(null)
   const termsRef = useRef(new Map())
@@ -30,6 +33,7 @@ export default function Desktop({ onAuthLost }) {
 
   useEffect(() => {
     refresh()
+    loadHostThemes() // ya hay sesión: trae los temas de ~/.config/hyprterm/themes/
     const t = setInterval(refresh, 4000)
     return () => clearInterval(t)
   }, [refresh])
@@ -72,6 +76,28 @@ export default function Desktop({ onAuthLost }) {
       await refresh()
     } catch (err) {
       if (err.status === 401) onAuthLost()
+    }
+  }
+
+  async function renameWindow(win) {
+    const name = prompt(`nuevo nombre para la ventana ${win.index}:`, win.name)?.trim()
+    if (!name || name === win.name) return
+    try {
+      await api(`/api/windows/${encodeURIComponent(win.id)}`, { method: 'PATCH', body: { name } })
+      await refresh()
+    } catch (err) {
+      if (err.status === 401) onAuthLost()
+    }
+  }
+
+  async function pasteClipboard() {
+    const win = windows[activeIdx]
+    if (!win) return
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) termsRef.current.get(win.id)?.paste(text)
+    } catch {
+      // permiso denegado o portapapeles vacío: nada que pegar
     }
   }
 
@@ -118,6 +144,8 @@ export default function Desktop({ onAuthLost }) {
         onSelect={scrollToPage}
         onNew={newWindow}
         onKill={killWindow}
+        onRename={renameWindow}
+        onSettings={() => setSettingsOpen(true)}
       />
       <div className="pager" ref={pagerRef} onScroll={onPagerScroll}>
         {windows.map((w, i) => (
@@ -140,7 +168,9 @@ export default function Desktop({ onAuthLost }) {
         mods={mods}
         onToggleMod={m => setMods(prev => ({ ...prev, [m]: !prev[m] }))}
         onSendKey={sendKey}
+        onPaste={pasteClipboard}
       />
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

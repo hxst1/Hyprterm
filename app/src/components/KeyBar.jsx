@@ -17,9 +17,18 @@ const KEYS = [
   { label: ':', seq: ':' }
 ]
 
-export default function KeyBar({ mods, onToggleMod, onSendKey }) {
+export default function KeyBar({ mods, onToggleMod, onSendKey, onPaste }) {
   return (
     <div className="keybar">
+      <button
+        className="key"
+        // pointerdown con preventDefault mantiene el teclado iOS abierto;
+        // el click posterior conserva la activación de usuario que exige clipboard
+        onPointerDown={e => e.preventDefault()}
+        onClick={onPaste}
+      >
+        pegar
+      </button>
       {KEYS.map(k =>
         k.mod ? (
           <button

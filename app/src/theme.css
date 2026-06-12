@@ -14,24 +14,25 @@
   font-display: swap;
 }
 
-/* Catppuccin Mocha — cambia estas variables para clavar tu paleta de Hyprland */
+/* Variables semánticas — las rellena prefs.js desde el tema JSON activo.
+   Los valores de aquí son solo el fallback inicial (Sakura). */
 :root {
-  --crust: #11111b;
-  --mantle: #181825;
-  --base: #1e1e2e;
-  --surface0: #313244;
-  --surface1: #45475a;
-  --overlay0: #6c7086;
-  --text: #cdd6f4;
-  --subtext: #a6adc8;
-  --blue: #89b4fa;
-  --lavender: #b4befe;
-  --mauve: #cba6f7;
-  --green: #a6e3a1;
-  --red: #f38ba8;
-  --yellow: #f9e2af;
-  --peach: #fab387;
-  --teal: #94e2d5;
+  --bg0: #12101a;        /* fondo de la app */
+  --bg1: #161320;        /* barras */
+  --bg2: #1a1622;        /* paneles */
+  --surface0: #2a2436;   /* teclas, chips */
+  --surface1: #3a3144;   /* bordes, hover */
+  --text: #f0e6e0;
+  --subtext: #b8aec5;
+  --accent: #c9a8d4;     /* ventana/chip activo */
+  --accent2: #b388c4;    /* mods pegajosos, gradiente ventana */
+  --soft: #d4bce0;       /* reloj */
+  --good: #a8c9a0;
+  --bad: #d47a9a;
+  --warn: #e8b88a;
+  --wall-a: #2b2138;     /* gradientes del "wallpaper" */
+  --wall-b: #241a3d;
+  --term-bg: #1a1622;    /* fondo del terminal (= theme.terminal.background) */
 
   --font-mono: 'JetBrainsMono Nerd Font Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --waybar-h: 40px;
@@ -45,7 +46,7 @@ html, body, #root {
   padding: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--crust);
+  background: var(--bg0);
   color: var(--text);
   font-family: var(--font-mono);
   overscroll-behavior: none;
@@ -61,9 +62,9 @@ html, body, #root {
   flex-direction: column;
   /* fondo tipo wallpaper de Hyprland: gradiente oscuro con un toque de color */
   background:
-    radial-gradient(120% 90% at 80% -10%, #2a2a45 0%, transparent 60%),
-    radial-gradient(100% 80% at 10% 110%, #1b2a4a 0%, transparent 55%),
-    var(--crust);
+    radial-gradient(120% 90% at 80% -10%, var(--wall-a) 0%, transparent 60%),
+    radial-gradient(100% 80% at 10% 110%, var(--wall-b) 0%, transparent 55%),
+    var(--bg0);
 }
 
 /* ---------- waybar ---------- */
@@ -76,7 +77,7 @@ html, body, #root {
   gap: 8px;
   padding: 0 10px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--base) 82%, transparent);
+  background: color-mix(in srgb, var(--bg2) 82%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--surface0);
@@ -108,16 +109,16 @@ html, body, #root {
   white-space: nowrap;
 }
 .ws-chip.active {
-  background: color-mix(in srgb, var(--blue) 18%, transparent);
-  border-color: color-mix(in srgb, var(--blue) 55%, transparent);
-  color: var(--blue);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent);
 }
 .ws-chip .close-x {
-  color: var(--red);
+  color: var(--bad);
   font-weight: 700;
   padding: 2px;
 }
-.ws-chip.add { color: var(--green); font-weight: 700; }
+.ws-chip.add { color: var(--good); font-weight: 700; }
 
 .waybar .modules {
   display: flex;
@@ -128,10 +129,20 @@ html, body, #root {
 }
 .waybar .mod { display: flex; align-items: center; gap: 4px; }
 .waybar .mod b { color: var(--text); font-weight: 600; }
-.waybar .mod.cpu b { color: var(--peach); }
-.waybar .mod.mem b { color: var(--mauve); }
-.waybar .mod.bat b { color: var(--green); }
-.waybar .clock { color: var(--lavender); font-weight: 600; }
+.waybar .mod.cpu b { color: var(--warn); }
+.waybar .mod.mem b { color: var(--accent2); }
+.waybar .mod.bat b { color: var(--good); }
+.waybar .clock { color: var(--soft); font-weight: 600; }
+
+.waybar .gear {
+  border: none;
+  background: transparent;
+  color: var(--subtext);
+  font-family: inherit;
+  font-size: 16px;
+  padding: 4px;
+}
+.waybar .gear:active { color: var(--accent); }
 
 /* ---------- pager de ventanas ---------- */
 .pager {
@@ -162,13 +173,13 @@ html, body, #root {
   min-height: 0;
   border-radius: 12px;
   padding: 2px;
-  background: linear-gradient(135deg, var(--blue), var(--mauve));
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
 }
 .term-window.inactive { background: var(--surface1); }
 .term-inner {
   height: 100%;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--base) 96%, transparent);
+  background: var(--term-bg);
   padding: 8px 4px 8px 10px;
   overflow: hidden;
 }
@@ -182,7 +193,7 @@ html, body, #root {
   padding: 6px 10px calc(env(safe-area-inset-bottom, 0px) + 6px);
   overflow-x: auto;
   scrollbar-width: none;
-  background: color-mix(in srgb, var(--mantle) 88%, transparent);
+  background: color-mix(in srgb, var(--bg1) 88%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--surface0);
@@ -206,10 +217,93 @@ html, body, #root {
 }
 .key:active { background: var(--surface1); }
 .key.sticky-on {
-  background: color-mix(in srgb, var(--mauve) 25%, var(--surface0));
-  border-color: var(--mauve);
-  color: var(--mauve);
+  background: color-mix(in srgb, var(--accent2) 25%, var(--surface0));
+  border-color: var(--accent2);
+  color: var(--accent2);
 }
+
+/* ---------- panel de ajustes ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 40;
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  max-height: 75%;
+  overflow-y: auto;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  border-radius: 18px 18px 0 0;
+  background: var(--bg1);
+  border-top: 1px solid var(--surface1);
+}
+.sheet h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--soft);
+}
+.sheet h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--subtext);
+}
+
+.theme-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--surface0);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+.theme-row.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+}
+.theme-row .swatches { display: flex; gap: 4px; margin-left: auto; }
+.theme-row .swatches i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.fontsize-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.fontsize-row .key { font-size: 15px; min-width: 44px; }
+.fontsize-row b { color: var(--accent); font-size: 15px; min-width: 44px; text-align: center; }
+
+.sheet textarea {
+  width: 100%;
+  min-height: 70px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+}
+.sheet .hint { color: var(--subtext); font-size: 11px; line-height: 1.5; margin: 6px 0 0; }
+.sheet .errmsg { margin-top: 6px; }
+.sheet .sheet-actions { display: flex; gap: 8px; margin-top: 8px; }
 
 /* ---------- pantallas de estado (offline / login) ---------- */
 .statescreen {
@@ -234,11 +328,11 @@ html, body, #root {
   max-width: 320px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: var(--base);
+  background: var(--bg2);
   border: 1px solid var(--surface1);
 }
-.fakeprompt.error { border-color: var(--red); animation: shake .3s; }
-.fakeprompt .ps1 { color: var(--green); font-weight: 700; }
+.fakeprompt.error { border-color: var(--bad); animation: shake .3s; }
+.fakeprompt .ps1 { color: var(--good); font-weight: 700; }
 .fakeprompt input {
   flex: 1;
   min-width: 0;
@@ -261,11 +355,11 @@ html, body, #root {
   border-radius: 10px;
   border: 1px solid var(--surface1);
   background: var(--surface0);
-  color: var(--blue);
+  color: var(--accent);
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
 }
 .btn:active { background: var(--surface1); }
 
-.errmsg { color: var(--red); font-size: 13px; min-height: 18px; }
+.errmsg { color: var(--bad); font-size: 13px; min-height: 18px; }
