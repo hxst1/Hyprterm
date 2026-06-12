@@ -11,12 +11,25 @@ import { readdir, readFile } from 'node:fs/promises'
 
 import { loadConfig } from './config.js'
 import { verifyPassword, signToken, verifyToken, loginThrottle, recordLogin } from './auth.js'
+import { corsHeaders } from './cors.js'
 import * as tmux from './tmux.js'
 import { getStats } from './stats.js'
 
 const cfg = loadConfig()
 const app = express()
 app.use(express.json())
+
+// CORS: permite que la PWA servida por otro host del tailnet llame a esta API
+app.use((req, res, next) => {
+  for (const [k, v] of Object.entries(corsHeaders(req.headers.origin))) {
+    res.setHeader(k, v)
+  }
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
+  next()
+})
 
 // --- API pública (solo "¿estás vivo?") ---
 app.get('/api/health', (_req, res) => {
