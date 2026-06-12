@@ -39,8 +39,15 @@ export function verifyToken(secret, token) {
 
 // Anti fuerza bruta simple: backoff exponencial por IP en memoria.
 const attempts = new Map()
+const ATTEMPT_TTL_MS = 60 * 60 * 1000
+
+function sweepAttempts() {
+  const cutoff = Date.now() - ATTEMPT_TTL_MS
+  for (const [ip, a] of attempts) if (a.last < cutoff) attempts.delete(ip)
+}
 
 export function loginThrottle(ip) {
+  sweepAttempts()
   const a = attempts.get(ip)
   if (!a) return 0
   const wait = Math.min(60_000, 1000 * 2 ** (a.count - 3))

@@ -49,11 +49,13 @@ export async function renameWindow(windowId, name) {
 
 // Sesión agrupada: comparte las ventanas de `session` pero tiene su propia
 // ventana activa, así cada vista del móvil puede mirar una ventana distinta.
-export async function prepareView(session, viewName, windowIndex) {
+export async function prepareView(session, viewName, windowId) {
   await tmux('new-session', '-d', '-s', viewName, '-t', `=${session}`)
   await tmux('set-option', '-t', viewName, 'status', 'off')
-  if (windowIndex !== null) {
-    await tmux('select-window', '-t', `=${viewName}:${windowIndex}`)
+  // con mouse on el scroll táctil/rueda entra en copy-mode y recorre el historial del pane
+  await tmux('set-option', '-t', viewName, 'mouse', 'on')
+  if (windowId !== null) {
+    await tmux('select-window', '-t', `${viewName}:${windowId}`)
   }
 }
 

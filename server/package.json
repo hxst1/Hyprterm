@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node src/index.js",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper 2>/dev/null || true",
-    "setpass": "node src/setpass.js"
+    "setpass": "node src/setpass.js",
+    "test": "node --test"
   },
   "dependencies": {
-    "express": "^4.21.2",
+    "express": "^5.1.0",
     "node-pty": "^1.0.0",
     "ws": "^8.18.0"
   }

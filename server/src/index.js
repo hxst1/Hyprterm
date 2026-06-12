@@ -49,6 +49,31 @@ function requireAuth(req, res, next) {
   next()
 }
 
+// Token válido → token nuevo; el cliente renueva antes de caducar
+app.post('/api/refresh', requireAuth, (_req, res) => {
+  res.json({ token: signToken(cfg.secret, cfg.tokenTtlMs), ttlMs: cfg.tokenTtlMs })
+})
+
+// Tickets de un solo uso y vida corta para abrir el WebSocket sin exponer
+// el token en la query string (las URLs acaban en logs de proxies).
+const WS_TICKET_TTL_MS = 30_000
+const wsTickets = new Map() // ticket -> caducidad
+
+app.post('/api/ws-ticket', requireAuth, (_req, res) => {
+  const now = Date.now()
+  for (const [t, exp] of wsTickets) if (exp < now) wsTickets.delete(t)
+  const ticket = randomBytes(16).toString('hex')
+  wsTickets.set(ticket, now + WS_TICKET_TTL_MS)
+  res.json({ ticket, ttlMs: WS_TICKET_TTL_MS })
+})
+
+function consumeWsTicket(ticket) {
+  if (typeof ticket !== 'string') return false
+  const exp = wsTickets.get(ticket)
+  wsTickets.delete(ticket)
+  return exp !== undefined && exp >= Date.now()
+}
+
 app.get('/api/windows', requireAuth, async (_req, res) => {
   await tmux.ensureSession(cfg.session, cfg.shell)
   res.json(await tmux.listWindows(cfg.session))
@@ -77,19 +102,27 @@ if (existsSync(dist)) {
   app.get(/^(?!\/api|\/ws).*/, (_req, res) => res.sendFile(join(dist, 'index.html')))
 }
 
+// Con Express 5 las promesas rechazadas de rutas async llegan aquí
+app.use((err, _req, res, _next) => {
+  console.error('error en ruta:', err.message)
+  if (!res.headersSent) res.status(500).json({ error: 'internal' })
+})
+
 // --- WebSocket: un pty por conexión, adjuntado a una vista agrupada de tmux ---
 const server = createServer(app)
 const wss = new WebSocketServer({ server, path: '/ws/term' })
 
 wss.on('connection', async (ws, req) => {
   const url = new URL(req.url, 'http://localhost')
-  const token = url.searchParams.get('token')
-  if (!verifyToken(cfg.secret, token)) {
+  if (!consumeWsTicket(url.searchParams.get('ticket'))) {
     ws.close(4001, 'unauthorized')
     return
   }
 
-  const windowIndex = url.searchParams.has('window') ? Number(url.searchParams.get('window')) : null
+  // id de ventana de tmux (@N): estable aunque se cierren otras ventanas,
+  // al contrario que el índice
+  const rawWindow = url.searchParams.get('window')
+  const windowId = /^@\d+$/.test(rawWindow ?? '') ? rawWindow : null
   const cols = Number(url.searchParams.get('cols')) || 80
   const rows = Number(url.searchParams.get('rows')) || 24
   const viewName = `htv_${randomBytes(4).toString('hex')}`
@@ -97,7 +130,7 @@ wss.on('connection', async (ws, req) => {
   let term
   try {
     await tmux.ensureSession(cfg.session, cfg.shell)
-    await tmux.prepareView(cfg.session, viewName, windowIndex)
+    await tmux.prepareView(cfg.session, viewName, windowId)
     term = pty.spawn('tmux', ['attach-session', '-t', `=${viewName}`], {
       name: 'xterm-256color',
       cols,
