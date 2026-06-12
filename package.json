@@ -1,6 +1,7 @@
 {
   "name": "hyprterm",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "pnpm --filter hyprterm-app dev",
     "build": "pnpm --filter hyprterm-app build",
