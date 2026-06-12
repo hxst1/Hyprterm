@@ -5,7 +5,9 @@ import './theme.css'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { applyTheme } from './prefs.js'
+import { migrateLegacyToken } from './tokens.js'
 
+migrateLegacyToken() // mono-host → host 'local'
 applyTheme()
 
 // Geometría real visible: el teclado de iOS no redimensiona el layout viewport,

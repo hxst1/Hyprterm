@@ -1,37 +1,20 @@
-const TOKEN_KEY = 'hyprterm_token'
-const EXP_KEY = 'hyprterm_token_exp'
-const TTL_KEY = 'hyprterm_token_ttl'
+import { activeHostId, hostBase } from './hosts.js'
+import {
+  getToken as getTokenFor,
+  setToken as setTokenFor,
+  clearToken as clearTokenFor,
+  tokenMeta
+} from './tokens.js'
 
+// Token del host activo (la app trabaja siempre contra un host a la vez)
 export function getToken() {
-  const exp = Number(localStorage.getItem(EXP_KEY) ?? 0)
-  if (exp < Date.now() + 60_000) return null
-  return localStorage.getItem(TOKEN_KEY)
+  return getTokenFor(activeHostId())
 }
-
 export function setToken(token, ttlMs) {
-  localStorage.setItem(TOKEN_KEY, token)
-  localStorage.setItem(EXP_KEY, String(Date.now() + ttlMs))
-  localStorage.setItem(TTL_KEY, String(ttlMs))
+  setTokenFor(activeHostId(), token, ttlMs)
 }
-
 export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(EXP_KEY)
-  localStorage.removeItem(TTL_KEY)
-}
-
-// Renueva el token cuando le queda <25 % de vida, así la sesión no caduca
-// mientras se usa. Single-flight: nunca hay dos renovaciones en vuelo.
-let refreshing = null
-
-function maybeRefresh() {
-  const exp = Number(localStorage.getItem(EXP_KEY) ?? 0)
-  const ttl = Number(localStorage.getItem(TTL_KEY) ?? 0)
-  if (!exp || !ttl || exp - Date.now() > ttl * 0.25) return
-  refreshing ??= api('/api/refresh', { method: 'POST' })
-    .then(d => setToken(d.token, d.ttlMs))
-    .catch(() => {})
-    .finally(() => { refreshing = null })
+  clearTokenFor(activeHostId())
 }
 
 export class ApiError extends Error {
@@ -42,13 +25,18 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { method = 'GET', body, timeoutMs = 6000 } = {}) {
+// Petición a un host. Por defecto el activo; `base` permite apuntar a otro
+// (p. ej. al sondear /api/health de un host inactivo).
+export async function api(path, { method = 'GET', body, timeoutMs = 6000, base, auth = true } = {}) {
+  const b = base ?? hostBase()
   const headers = {}
-  const token = getToken()
-  if (token) headers.Authorization = `Bearer ${token}`
+  if (auth) {
+    const token = getToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+  }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
-  const res = await fetch(path, {
+  const res = await fetch(b + path, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -60,13 +48,43 @@ export async function api(path, { method = 'GET', body, timeoutMs = 6000 } = {})
   return data
 }
 
-// Los WS se abren con un ticket de un solo uso en vez del token,
-// para que el token no acabe en logs de proxies vía query string.
+// Sondea la salud de un host concreto (sin auth). Devuelve el JSON o null.
+export async function pingHost(host, timeoutMs = 3500) {
+  try {
+    return await api('/api/health', { base: host.url || '', auth: false, timeoutMs })
+  } catch {
+    return null
+  }
+}
+
+// Renueva el token del host activo cuando le queda <25 % de vida.
+// Single-flight: nunca dos renovaciones a la vez.
+let refreshing = null
+function maybeRefresh() {
+  const meta = tokenMeta(activeHostId())
+  if (!meta || meta.exp - Date.now() > meta.ttl * 0.25) return
+  refreshing ??= api('/api/refresh', { method: 'POST' })
+    .then(d => setToken(d.token, d.ttlMs))
+    .catch(() => {})
+    .finally(() => { refreshing = null })
+}
+
+// Base WS del host activo: local usa location.host; remoto convierte http(s)→ws(s)
+function wsBase() {
+  const base = hostBase()
+  if (!base) {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+    return `${proto}://${location.host}`
+  }
+  return base.replace(/^http/, 'ws')
+}
+
+// Los WS se abren con un ticket de un solo uso en vez del token, para que el
+// token no acabe en logs de proxies vía query string.
 async function wsUrl(path, params = {}) {
   const { ticket } = await api('/api/ws-ticket', { method: 'POST' })
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   const qs = new URLSearchParams({ ticket, ...params })
-  return `${proto}://${location.host}${path}?${qs}`
+  return `${wsBase()}${path}?${qs}`
 }
 
 export function termWsUrl(windowId, cols, rows) {
